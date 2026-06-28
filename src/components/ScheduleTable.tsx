@@ -11,6 +11,10 @@ import {
 import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
 import { fetchSchedules, saveMonth, removeMonth, resetAll } from '@/lib/scheduleRepo'
 
+// soft gate เท่านั้น — ไม่ใช่ security จริง (PIN อยู่ฝั่ง client)
+const EDIT_PIN = '11223344'
+const EDIT_KEY = 'inr-schedule:edit'
+
 const SHIFT_STYLE: Record<ShiftCode, string> = {
   M: 'text-blue-700 font-semibold',
   A: 'text-red-600 font-bold text-lg leading-none',
@@ -86,6 +90,8 @@ export default function ScheduleTable() {
   const [hydrated, setHydrated] = useState(false)
   const [selMonth, setSelMonth] = useState(1)
   const [selYear, setSelYear] = useState(2569)
+  const [editing, setEditing] = useState(false)
+  const [showPin, setShowPin] = useState(false)
 
   // โหลดจาก Supabase หลัง mount (กัน SSR mismatch)
   useEffect(() => {
@@ -97,6 +103,9 @@ export default function ScheduleTable() {
       if (last) {
         setSelMonth(last.month)
         setSelYear(last.thaiYear)
+      }
+      if (typeof window !== 'undefined' && sessionStorage.getItem(EDIT_KEY) === '1') {
+        setEditing(true)
       }
       setHydrated(true)
     })
@@ -132,7 +141,20 @@ export default function ScheduleTable() {
 
   const { department, totalDays, weekendDays, staff } = data
   const days = Array.from({ length: totalDays }, (_, i) => i + 1)
+  const mobileStaff = editing ? staff : staff.filter((m) => m.name)
   const numOrUndef = (v: string) => (v === '' ? undefined : Number(v))
+
+  function unlock(pin: string): boolean {
+    if (pin !== EDIT_PIN) return false
+    setEditing(true)
+    sessionStorage.setItem(EDIT_KEY, '1')
+    setShowPin(false)
+    return true
+  }
+  function lock() {
+    setEditing(false)
+    sessionStorage.removeItem(EDIT_KEY)
+  }
 
   // ===== mutations (สร้างเดือนอัตโนมัติถ้ายังไม่มี) =====
   function updateCurrent(fn: (m: ScheduleData) => ScheduleData) {
@@ -144,6 +166,7 @@ export default function ScheduleTable() {
     })
   }
   function cycleCell(staffIdx: number, dayIdx: number) {
+    if (!editing) return
     updateCurrent((m) => ({
       ...m,
       staff: m.staff.map((s, si) =>
@@ -166,6 +189,7 @@ export default function ScheduleTable() {
     updateCurrent((m) => ({ ...m, staff: m.staff.filter((_, i) => i !== staffIdx) }))
   }
   function toggleWeekend(day: number) {
+    if (!editing) return
     updateCurrent((m) => ({
       ...m,
       weekendDays: m.weekendDays.includes(day)
@@ -209,14 +233,18 @@ export default function ScheduleTable() {
               ตารางเวร ประจำเดือน{' '}
               <span className="text-blue-700">{THAI_MONTHS[selMonth]} {selYear}</span>
             </h1>
-            <input
-              className="mt-1 text-sm sm:text-base font-semibold text-gray-600 text-center border border-transparent hover:border-gray-200 focus:border-blue-300 rounded px-2 py-0.5 w-full max-w-md focus:outline-none"
-              value={department}
-              onChange={(e) => updateCurrent((m) => ({ ...m, department: e.target.value }))}
-            />
+            {editing ? (
+              <input
+                className="mt-1 text-sm sm:text-base font-semibold text-gray-600 text-center border border-transparent hover:border-gray-200 focus:border-blue-300 rounded px-2 py-0.5 w-full max-w-md focus:outline-none"
+                value={department}
+                onChange={(e) => updateCurrent((m) => ({ ...m, department: e.target.value }))}
+              />
+            ) : (
+              <h2 className="text-sm sm:text-base font-semibold text-gray-600 mt-1">{department}</h2>
+            )}
           </div>
 
-          {/* Month / Year picker */}
+          {/* Month / Year picker + lock */}
           <div className="flex flex-wrap justify-center items-center gap-2 mt-3">
             <button onClick={() => stepMonth(-1)} className="rounded-lg w-8 h-8 bg-gray-100 text-gray-600 text-lg leading-none">‹</button>
             <select
@@ -236,24 +264,34 @@ export default function ScheduleTable() {
             />
             <button onClick={() => stepMonth(1)} className="rounded-lg w-8 h-8 bg-gray-100 text-gray-600 text-lg leading-none">›</button>
 
-            {exists && (
-              <button onClick={deleteMonth} className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 border border-red-200">
-                ลบเดือนนี้
-              </button>
+            {editing ? (
+              <>
+                {exists && (
+                  <button onClick={deleteMonth} className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 border border-red-200">
+                    ลบเดือนนี้
+                  </button>
+                )}
+                <button onClick={doReset} className="rounded-lg px-2 py-1.5 text-xs text-gray-400 border border-gray-200">รีเซ็ต</button>
+                <button onClick={lock} className="rounded-lg px-3 py-1.5 text-sm font-medium bg-green-600 text-white shadow-sm">🔒 ล็อก</button>
+              </>
+            ) : (
+              <button onClick={() => setShowPin(true)} className="rounded-lg px-3 py-1.5 text-sm font-medium bg-gray-700 text-white shadow-sm">✎ แก้ไข</button>
             )}
-            <button onClick={doReset} className="rounded-lg px-2 py-1.5 text-xs text-gray-400 border border-gray-200">
-              รีเซ็ต
-            </button>
           </div>
 
-          {!exists && (
+          {editing && !exists && (
             <p className="text-center text-xs text-amber-600 bg-amber-50 rounded-lg py-1.5 mt-2 max-w-md mx-auto">
               ยังไม่มีข้อมูลเดือนนี้ — คลิกช่องวันหรือเพิ่มคนเพื่อเริ่มสร้าง (บันทึกอัตโนมัติ)
             </p>
           )}
-          <p className="text-center text-xs text-gray-400 mt-2">
-            คลิกช่องวันเพื่อสลับเวร (วน: ว่าง → / → ✕ → S → S → บ/ด → สลับ) · คลิกเลขวันบนหัวตารางเพื่อตั้งวันหยุด
-          </p>
+          {!editing && !exists && (
+            <p className="text-center text-xs text-gray-400 mt-2">ยังไม่มีข้อมูลเดือนนี้</p>
+          )}
+          {editing && (
+            <p className="text-center text-xs text-gray-400 mt-2">
+              คลิกช่องวันเพื่อสลับเวร (วน: ว่าง → / → ✕ → S → S → บ/ด → สลับ) · คลิกเลขวันบนหัวตารางเพื่อตั้งวันหยุด
+            </p>
+          )}
 
           <Legend />
         </div>
@@ -270,8 +308,8 @@ export default function ScheduleTable() {
                   return (
                     <th
                       key={d}
-                      onClick={() => toggleWeekend(d)}
-                      className={`border border-gray-500 w-7 py-2 text-center cursor-pointer ${isWeekend ? 'bg-red-700' : ''}`}
+                      onClick={editing ? () => toggleWeekend(d) : undefined}
+                      className={`border border-gray-500 w-7 py-2 text-center ${isWeekend ? 'bg-red-700' : ''} ${editing ? 'cursor-pointer' : ''}`}
                     >
                       <div className={isWeekend ? 'rounded-full border-2 border-white w-5 h-5 flex items-center justify-center mx-auto text-xs' : ''}>
                         {d}
@@ -282,35 +320,40 @@ export default function ScheduleTable() {
                 <th className="border border-gray-500 px-1 py-2 text-center w-8">ทำ</th>
                 <th className="border border-gray-500 px-1 py-2 text-center w-8">OT</th>
                 <th className="border border-gray-500 px-1 py-2 text-center w-8">เวร</th>
-                <th className="border border-gray-500 px-1 py-2 text-center w-8"></th>
+                {editing && <th className="border border-gray-500 px-1 py-2 text-center w-8"></th>}
               </tr>
             </thead>
             <tbody>
               {staff.map((member, rowIdx) => {
+                if (!member.name && !editing) {
+                  return (
+                    <tr key={rowIdx} className="border-b">
+                      <td className="border border-gray-200 text-center text-gray-400 py-2 sticky left-0 z-10 bg-white">{rowIdx + 1}</td>
+                      <td className="border border-gray-200 px-2 py-2 text-gray-300 italic text-xs sticky left-8 z-10 bg-white">-</td>
+                      {days.map((d) => (<td key={d} className="border border-gray-100 text-center py-2"></td>))}
+                      <td className="border border-gray-200"></td>
+                      <td className="border border-gray-200"></td>
+                      <td className="border border-gray-200"></td>
+                    </tr>
+                  )
+                }
                 const bg = ROLE_BG[member.role]
                 return (
-                  <tr key={rowIdx} className={`border-b ${bg}`}>
+                  <tr key={rowIdx} className={`border-b ${editing ? '' : 'hover:bg-yellow-50 transition-colors'} ${bg}`}>
                     <td className={`border border-gray-200 text-center text-gray-500 py-1.5 sticky left-0 z-10 ${bg}`}>
                       {rowIdx + 1}
                     </td>
-                    <td className={`border border-gray-200 px-1 py-1.5 sticky left-8 z-10 ${bg}`}>
-                      <div className="flex flex-col gap-0.5">
-                        <input
-                          className="border rounded px-1 py-0.5 w-24 text-xs"
-                          value={member.name}
-                          placeholder="ชื่อ"
-                          onChange={(e) => patchStaff(rowIdx, { name: e.target.value })}
-                        />
-                        <select
-                          className="border rounded px-1 py-0.5 w-24 text-[10px] text-gray-500"
-                          value={member.role}
-                          onChange={(e) => patchStaff(rowIdx, { role: e.target.value as StaffMember['role'] })}
-                        >
-                          {ROLES.map((r) => (
-                            <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-                          ))}
-                        </select>
-                      </div>
+                    <td className={`border border-gray-200 px-1 py-1.5 sticky left-8 z-10 ${bg} ${editing ? '' : 'font-medium text-gray-800 whitespace-nowrap'}`}>
+                      {editing ? (
+                        <div className="flex flex-col gap-0.5">
+                          <input className="border rounded px-1 py-0.5 w-24 text-xs" value={member.name} placeholder="ชื่อ" onChange={(e) => patchStaff(rowIdx, { name: e.target.value })} />
+                          <select className="border rounded px-1 py-0.5 w-24 text-[10px] text-gray-500" value={member.role} onChange={(e) => patchStaff(rowIdx, { role: e.target.value as StaffMember['role'] })}>
+                            {ROLES.map((r) => (<option key={r} value={r}>{ROLE_LABEL[r]}</option>))}
+                          </select>
+                        </div>
+                      ) : (
+                        member.name
+                      )}
                     </td>
                     {member.shifts.map((shift, dayIdx) => {
                       const day = dayIdx + 1
@@ -318,76 +361,106 @@ export default function ScheduleTable() {
                       return (
                         <td
                           key={dayIdx}
-                          onClick={() => cycleCell(rowIdx, dayIdx)}
-                          className={`border border-gray-200 text-center py-1.5 cursor-pointer hover:bg-yellow-100 ${isWeekend ? 'bg-red-50' : ''}`}
+                          onClick={editing ? () => cycleCell(rowIdx, dayIdx) : undefined}
+                          className={`border border-gray-200 text-center py-1.5 ${isWeekend ? 'bg-red-50' : ''} ${editing ? 'cursor-pointer hover:bg-yellow-100' : ''}`}
                         >
                           <span className={SHIFT_STYLE[shift]} title={SHIFT_LABELS[shift]}>
-                            {SHIFT_DISPLAY[shift] || '·'}
+                            {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
                           </span>
                         </td>
                       )
                     })}
-                    <td className="border border-gray-200 p-0.5">
-                      <input className="w-7 text-center text-xs border rounded" value={member.totalWork ?? ''} placeholder={String(countWork(member) || '')} onChange={(e) => patchStaff(rowIdx, { totalWork: numOrUndef(e.target.value) })} />
-                    </td>
-                    <td className="border border-gray-200 p-0.5">
-                      <input className="w-7 text-center text-xs border rounded" value={member.totalOT ?? ''} onChange={(e) => patchStaff(rowIdx, { totalOT: numOrUndef(e.target.value) })} />
-                    </td>
-                    <td className="border border-gray-200 p-0.5">
-                      <input className="w-7 text-center text-xs border rounded" value={member.totalNight ?? ''} placeholder={String(countNight(member) || '')} onChange={(e) => patchStaff(rowIdx, { totalNight: numOrUndef(e.target.value) })} />
-                    </td>
-                    <td className="border border-gray-200 text-center">
-                      <button onClick={() => removeStaff(rowIdx)} className="text-red-500 text-xs px-1">✕</button>
-                    </td>
+                    {editing ? (
+                      <>
+                        <td className="border border-gray-200 p-0.5">
+                          <input className="w-7 text-center text-xs border rounded" value={member.totalWork ?? ''} placeholder={String(countWork(member) || '')} onChange={(e) => patchStaff(rowIdx, { totalWork: numOrUndef(e.target.value) })} />
+                        </td>
+                        <td className="border border-gray-200 p-0.5">
+                          <input className="w-7 text-center text-xs border rounded" value={member.totalOT ?? ''} onChange={(e) => patchStaff(rowIdx, { totalOT: numOrUndef(e.target.value) })} />
+                        </td>
+                        <td className="border border-gray-200 p-0.5">
+                          <input className="w-7 text-center text-xs border rounded" value={member.totalNight ?? ''} placeholder={String(countNight(member) || '')} onChange={(e) => patchStaff(rowIdx, { totalNight: numOrUndef(e.target.value) })} />
+                        </td>
+                        <td className="border border-gray-200 text-center">
+                          <button onClick={() => removeStaff(rowIdx)} className="text-red-500 text-xs px-1">✕</button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="border border-gray-200 text-center font-semibold text-gray-700 py-1.5">
+                          {member.totalWork ?? (countWork(member) > 0 ? countWork(member) : '')}
+                        </td>
+                        <td className="border border-gray-200 text-center font-semibold text-blue-600 py-1.5">
+                          {member.totalOT ?? ''}
+                        </td>
+                        <td className="border border-gray-200 text-center font-semibold text-purple-600 py-1.5">
+                          {member.totalNight ?? (countNight(member) > 0 ? countNight(member) : '')}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 )
               })}
             </tbody>
           </table>
-          <div className="p-2">
-            <button onClick={addStaff} className="text-sm text-blue-600 border border-blue-200 rounded-lg px-3 py-1">+ เพิ่มแถว</button>
-          </div>
+          {editing && (
+            <div className="p-2">
+              <button onClick={addStaff} className="text-sm text-blue-600 border border-blue-200 rounded-lg px-3 py-1">+ เพิ่มแถว</button>
+            </div>
+          )}
         </div>
 
         {/* ===== Mobile: card list ===== */}
         <div className="md:hidden bg-gray-100 rounded-b-xl space-y-3 pt-3">
-          {staff.map((member, i) => (
-            <div key={i} className={`rounded-xl shadow-sm border border-gray-200 p-3 ${ROLE_BG[member.role]}`}>
-              <div className="flex items-center justify-between mb-2 gap-2">
-                <div className="flex items-center gap-1 min-w-0">
-                  <input className="border rounded px-1 py-0.5 text-sm w-28" value={member.name} placeholder="ชื่อ" onChange={(e) => patchStaff(i, { name: e.target.value })} />
-                  <select className="border rounded px-1 py-0.5 text-[10px] text-gray-500" value={member.role} onChange={(e) => patchStaff(i, { role: e.target.value as StaffMember['role'] })}>
-                    {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-                  </select>
-                  <button onClick={() => removeStaff(i)} className="text-red-500 text-xs px-1">✕</button>
-                </div>
-                <div className="flex gap-2 text-xs shrink-0">
-                  <span className="text-gray-700">ทำ {member.totalWork ?? (countWork(member) || '-')}</span>
-                  <span className="text-blue-600">OT {member.totalOT ?? '-'}</span>
-                  <span className="text-purple-600">เวร {member.totalNight ?? (countNight(member) || '-')}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {member.shifts.map((shift, dayIdx) => {
-                  const day = dayIdx + 1
-                  const isWeekend = weekendDays.includes(day)
-                  return (
-                    <div
-                      key={dayIdx}
-                      onClick={() => cycleCell(i, dayIdx)}
-                      className={`flex flex-col items-center justify-center rounded border py-1 cursor-pointer active:bg-yellow-100 ${isWeekend ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'}`}
-                    >
-                      <span className={`text-[10px] leading-none ${isWeekend ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{day}</span>
-                      <span className={`h-4 flex items-center ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
-                        {SHIFT_DISPLAY[shift] || '·'}
-                      </span>
+          {mobileStaff.map((member, i) => {
+            const realIdx = staff.indexOf(member)
+            return (
+              <div key={i} className={`rounded-xl shadow-sm border border-gray-200 p-3 ${ROLE_BG[member.role]}`}>
+                <div className="flex items-center justify-between mb-2 gap-2">
+                  {editing ? (
+                    <div className="flex items-center gap-1 min-w-0">
+                      <input className="border rounded px-1 py-0.5 text-sm w-28" value={member.name} placeholder="ชื่อ" onChange={(e) => patchStaff(realIdx, { name: e.target.value })} />
+                      <select className="border rounded px-1 py-0.5 text-[10px] text-gray-500" value={member.role} onChange={(e) => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
+                        {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                      </select>
+                      <button onClick={() => removeStaff(realIdx)} className="text-red-500 text-xs px-1">✕</button>
                     </div>
-                  )
-                })}
+                  ) : (
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-semibold text-gray-800 truncate">{member.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 shrink-0">{ROLE_LABEL[member.role]}</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2 text-xs shrink-0">
+                    <span className="text-gray-700">ทำ {member.totalWork ?? (countWork(member) || '-')}</span>
+                    <span className="text-blue-600">OT {member.totalOT ?? '-'}</span>
+                    <span className="text-purple-600">เวร {member.totalNight ?? (countNight(member) || '-')}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {member.shifts.map((shift, dayIdx) => {
+                    const day = dayIdx + 1
+                    const isWeekend = weekendDays.includes(day)
+                    return (
+                      <div
+                        key={dayIdx}
+                        onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
+                        className={`flex flex-col items-center justify-center rounded border py-1 ${isWeekend ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'} ${editing ? 'cursor-pointer active:bg-yellow-100' : ''}`}
+                      >
+                        <span className={`text-[10px] leading-none ${isWeekend ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{day}</span>
+                        <span className={`h-4 flex items-center ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
+                          {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-          <button onClick={addStaff} className="w-full text-sm text-blue-600 border border-blue-200 bg-white rounded-xl py-2">+ เพิ่มคน</button>
+            )
+          })}
+          {editing && (
+            <button onClick={addStaff} className="w-full text-sm text-blue-600 border border-blue-200 bg-white rounded-xl py-2">+ เพิ่มคน</button>
+          )}
         </div>
 
         {/* Footer notes */}
@@ -395,6 +468,41 @@ export default function ScheduleTable() {
           <p>หมายเหตุ: S = standby</p>
           <p>เงินเวรพยาบาล 1,200/เวร</p>
           <p>เงินเวรนักเทคโนหัวใจ 1,600/เวร เวรละ 200 บาท</p>
+        </div>
+      </div>
+
+      {showPin && <PinModal onCancel={() => setShowPin(false)} onSubmit={unlock} />}
+    </div>
+  )
+}
+
+function PinModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (pin: string) => boolean }) {
+  const [pin, setPin] = useState('')
+  const [err, setErr] = useState(false)
+
+  function submit() {
+    if (!onSubmit(pin)) setErr(true)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={onCancel}>
+      <div className="bg-white rounded-xl shadow-xl p-5 w-full max-w-xs" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-bold text-gray-800 mb-1">ใส่ PIN เพื่อแก้ไข</h3>
+        <p className="text-xs text-gray-400 mb-3">โหมดแก้ไขต้องใช้ PIN</p>
+        <input
+          type="password"
+          inputMode="numeric"
+          autoFocus
+          value={pin}
+          onChange={(e) => { setPin(e.target.value); setErr(false) }}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          className={`border rounded-lg px-3 py-2 w-full text-center tracking-widest ${err ? 'border-red-400' : 'border-gray-300'}`}
+          placeholder="••••••••"
+        />
+        {err && <p className="text-xs text-red-500 mt-1">PIN ไม่ถูกต้อง</p>}
+        <div className="flex justify-end gap-2 mt-4">
+          <button onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-500">ยกเลิก</button>
+          <button onClick={submit} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">ปลดล็อก</button>
         </div>
       </div>
     </div>
