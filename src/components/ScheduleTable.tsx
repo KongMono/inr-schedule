@@ -127,6 +127,37 @@ function BtnIcon({ children, onClick, title = '', active = false }: {
   )
 }
 
+// ── MD3 Theme Toggle Switch ──────────────────────────────────────
+function ThemeSwitch({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={dark}
+      onClick={onToggle}
+      title={dark ? 'เปลี่ยนเป็น Light mode' : 'เปลี่ยนเป็น Dark mode'}
+      className="relative flex items-center cursor-pointer select-none focus:outline-none group"
+    >
+      {/* Track */}
+      <span className={`relative inline-flex items-center w-14 h-8 rounded-full transition-colors duration-300 ease-in-out border-2 ${
+        dark
+          ? 'bg-blue-600 border-blue-600'
+          : 'bg-gray-200 dark:bg-gray-600 border-gray-300 dark:border-gray-500'
+      } group-focus-visible:ring-2 group-focus-visible:ring-blue-400 group-focus-visible:ring-offset-2`}>
+        {/* Thumb */}
+        <span className={`absolute flex items-center justify-center rounded-full shadow-md transition-all duration-300 ease-in-out ${
+          dark
+            ? 'w-7 h-7 left-[calc(100%-1.875rem)] bg-white text-blue-600'
+            : 'w-5 h-5 left-[3px] bg-white text-gray-500'
+        }`}>
+          <span className={`transition-all duration-300 leading-none ${dark ? 'text-sm' : 'text-xs'}`}>
+            {dark ? '☀' : '☾'}
+          </span>
+        </span>
+      </span>
+    </button>
+  )
+}
+
 // ── Legend ───────────────────────────────────────────────────────
 function Legend() {
   return (
@@ -297,9 +328,7 @@ export default function ScheduleTable() {
 
           {/* Dark mode toggle — absolute so it doesn't affect centering */}
           <div className="absolute top-4 right-4">
-            <BtnIcon onClick={toggleDark} title={dark ? 'Light mode' : 'Dark mode'}>
-              {dark ? '☀' : '☾'}
-            </BtnIcon>
+            <ThemeSwitch dark={dark} onToggle={toggleDark} />
           </div>
 
           {/* Centered title block */}
