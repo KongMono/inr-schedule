@@ -1,9 +1,9 @@
 export type ShiftCode =
-  | 'M'   // เช้า /
-  | 'A'   // บ่าย X
-  | 'N'   // เวรบ่าย S (16.01-24.00)
-  | 'N2'  // เวรบ่าย S (with number variant)
-  | 'OFF' // หยุด ผ/ด
+  | 'M'   // แพทย์เวร /
+  | 'A'   // ไม่อยู่เวร X
+  | 'N'   // standby S
+  | 'N2'  // standby S (with number variant)
+  | 'OFF' // เวรบ่ายดึก บ/ด
   | 'SWAP'// สลับ
   | '-'   // ว่าง/ไม่ได้ทำงาน
 
@@ -23,18 +23,20 @@ export interface ScheduleData {
   thaiYear: number
   department: string
   totalDays: number
+  weekendDays: number[]
   staff: StaffMember[]
 }
 
 // ข้อมูลจากรูป: กรกฎาคม 2569 (July 2026)
 // Shifts index 0 = วันที่ 1, index 1 = วันที่ 2, ...
 // วันหยุด (วงกลมแดง): 4, 5, 11, 12, 18, 19, 25, 26, 28, 29
-export const scheduleData: ScheduleData = {
+const july2569: ScheduleData = {
   month: 7,
   year: 2026,
   thaiYear: 2569,
   department: 'ศูนย์รังสีร่วมรักษา (INR)',
   totalDays: 31,
+  weekendDays: [4, 5, 11, 12, 18, 19, 25, 26, 28, 29],
   staff: [
     {
       id: null,
@@ -162,16 +164,20 @@ export const scheduleData: ScheduleData = {
 }
 
 export const SHIFT_LABELS: Record<ShiftCode, string> = {
-  M: 'เช้า',
-  A: 'บ่าย',
-  N: 'เวร',
-  N2: 'เวร',
-  OFF: 'หยุด',
+  M: 'แพทย์เวร',
+  A: 'ไม่อยู่เวร',
+  N: 'standby',
+  N2: 'standby',
+  OFF: 'เวรบ่ายดึก',
   SWAP: 'สลับ',
   '-': '',
 }
 
-export const WEEKEND_DAYS = [4, 5, 11, 12, 18, 19, 25, 26, 28, 29]
+// เพิ่มเดือนใหม่: detect จากรูป แล้ว push เข้า array นี้ (เรียงจากเก่า→ใหม่)
+export const schedules: ScheduleData[] = [july2569]
+
+// เดือนล่าสุดเป็น default
+export const defaultScheduleIndex = schedules.length - 1
 
 export const THAI_MONTHS = [
   '', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
