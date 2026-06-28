@@ -135,7 +135,8 @@ function ThemeSwitch({ dark, onToggle }: { dark: boolean; onToggle: () => void }
       aria-checked={dark}
       onClick={onToggle}
       title={dark ? 'เปลี่ยนเป็น Light mode' : 'เปลี่ยนเป็น Dark mode'}
-      className="relative flex items-center cursor-pointer select-none focus:outline-none group p-2 -m-2"
+      style={{ touchAction: 'manipulation' }}
+      className="relative flex items-center cursor-pointer select-none focus:outline-none group p-3 -m-3"
     >
       {/* Track */}
       <span className={`relative inline-flex items-center w-14 h-8 rounded-full transition-colors duration-300 ease-in-out border-2 ${
@@ -327,7 +328,7 @@ export default function ScheduleTable() {
         <div className="relative bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-6 sm:px-6 sm:py-7 transition-colors duration-300">
 
           {/* Dark mode toggle — absolute so it doesn't affect centering */}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-4 right-4 z-10">
             <ThemeSwitch dark={dark} onToggle={toggleDark} />
           </div>
 
