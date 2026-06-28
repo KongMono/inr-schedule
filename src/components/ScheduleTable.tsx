@@ -70,7 +70,7 @@ function BtnFilled({ children, onClick, className = '' }: {
     <button
       onClick={onClick}
       onMouseDown={addRipple}
-      className={`md-state relative overflow-hidden inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium bg-blue-700 dark:bg-blue-600 text-white shadow-sm transition-all duration-200 hover:shadow-md active:scale-95 ${className}`}
+      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full bg-blue-700 dark:bg-blue-600 text-white shadow-sm transition-all duration-200 hover:shadow-md active:scale-95 ${className}`}
     >
       {children}
     </button>
@@ -84,7 +84,7 @@ function BtnTonal({ children, onClick, className = '' }: {
     <button
       onClick={onClick}
       onMouseDown={addRipple}
-      className={`md-state relative overflow-hidden inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 transition-all duration-200 active:scale-95 ${className}`}
+      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 transition-all duration-200 active:scale-95 ${className}`}
     >
       {children}
     </button>
@@ -101,7 +101,7 @@ function BtnOutlined({ children, onClick, className = '', danger = false }: {
     <button
       onClick={onClick}
       onMouseDown={addRipple}
-      className={`md-state relative overflow-hidden inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 active:scale-95 ${colors} ${className}`}
+      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full border transition-all duration-200 active:scale-95 ${colors} ${className}`}
     >
       {children}
     </button>
@@ -116,7 +116,7 @@ function BtnIcon({ children, onClick, title = '', active = false }: {
       onClick={onClick}
       onMouseDown={addRipple}
       title={title}
-      className={`md-state relative overflow-hidden w-10 h-10 rounded-full flex items-center justify-center text-base transition-all duration-200 active:scale-90 ${
+      className={`md-state relative overflow-hidden w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all duration-200 active:scale-90 ${
         active
           ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300'
           : 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -293,23 +293,21 @@ export default function ScheduleTable() {
       <div className="max-w-full">
 
         {/* ── MD3 Top App Bar ── */}
-        <div className="bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-3 py-3 sm:px-6 sm:py-4 transition-colors duration-300">
+        <div className="bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-4 sm:px-6 sm:py-5 transition-colors duration-300">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 text-center">
-              <h1 className="text-base sm:text-xl font-medium text-[var(--md-on-surface)] tracking-tight">
-                ตารางเวร ประจำเดือน
-              </h1>
-              <p className="text-lg sm:text-2xl font-bold text-blue-700 dark:text-blue-400 mt-0.5">
+              <p className="md-body-m text-[var(--md-on-surface-var)]">ตารางเวร ประจำเดือน</p>
+              <h1 className="md-headline-s sm:md-headline-m text-blue-700 dark:text-blue-400 mt-1">
                 {THAI_MONTHS[selMonth]} {selYear}
-              </p>
+              </h1>
               {editing ? (
                 <input
-                  className="mt-1 text-sm font-medium text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
+                  className="mt-2 md-body-m text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
                   value={department}
                   onChange={e => updateCurrent(m => ({ ...m, department: e.target.value }))}
                 />
               ) : (
-                <p className="text-sm font-medium text-[var(--md-on-surface-var)] mt-0.5">{department}</p>
+                <p className="md-body-m text-[var(--md-on-surface-var)] mt-1">{department}</p>
               )}
             </div>
             <BtnIcon onClick={toggleDark} title={dark ? 'Light mode' : 'Dark mode'}>
@@ -318,13 +316,13 @@ export default function ScheduleTable() {
           </div>
 
           {/* Month nav */}
-          <div className="flex flex-wrap justify-center items-center gap-2 mt-3">
+          <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
             <BtnIcon onClick={() => stepMonth(-1)}>‹</BtnIcon>
 
             <select
               value={selMonth}
               onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelMonth(Number(e.target.value)) }}
-              className="border border-gray-300 dark:border-gray-600 rounded-full px-4 py-1.5 text-sm text-[var(--md-on-surface)] bg-[var(--md-surface)] focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+              className="md-label-l border border-gray-300 dark:border-gray-600 rounded-full h-10 px-4 text-[var(--md-on-surface)] bg-[var(--md-surface)] focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                 <option key={m} value={m}>{THAI_MONTHS[m]}</option>
@@ -335,12 +333,12 @@ export default function ScheduleTable() {
               type="number"
               value={selYear}
               onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelYear(Number(e.target.value)) }}
-              className="border border-gray-300 dark:border-gray-600 rounded-full px-3 py-1.5 text-sm text-[var(--md-on-surface)] bg-[var(--md-surface)] w-20 text-center focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+              className="md-label-l border border-gray-300 dark:border-gray-600 rounded-full h-10 px-3 text-[var(--md-on-surface)] bg-[var(--md-surface)] w-20 text-center focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
             />
 
             <BtnIcon onClick={() => stepMonth(1)}>›</BtnIcon>
 
-            <div className="flex items-center gap-1.5 ml-1">
+            <div className="flex items-center gap-2 ml-1">
               {editing ? (
                 <>
                   {exists && <BtnOutlined onClick={deleteMonth} danger>ลบเดือนนี้</BtnOutlined>}
@@ -354,15 +352,15 @@ export default function ScheduleTable() {
           </div>
 
           {editing && !exists && (
-            <p className="text-center text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-xl py-1.5 mt-2 max-w-md mx-auto">
+            <p className="md-body-s text-center text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-xl px-4 py-2 mt-3 max-w-md mx-auto">
               ยังไม่มีข้อมูลเดือนนี้ — คลิกช่องวันหรือเพิ่มคนเพื่อเริ่มสร้าง
             </p>
           )}
           {!editing && !exists && (
-            <p className="text-center text-xs text-[var(--md-on-surface-var)] mt-2">ยังไม่มีข้อมูลเดือนนี้</p>
+            <p className="md-body-s text-center text-[var(--md-on-surface-var)] mt-3">ยังไม่มีข้อมูลเดือนนี้</p>
           )}
           {editing && (
-            <p className="text-center text-xs text-[var(--md-on-surface-var)] mt-2">
+            <p className="md-body-s text-center text-[var(--md-on-surface-var)] mt-3">
               คลิกช่องวัน (วน: ว่าง → / → ✕ → S → บ/ด → สลับ) · คลิกเลขวันบน header = วันหยุด
             </p>
           )}
@@ -469,14 +467,14 @@ export default function ScheduleTable() {
               </tbody>
             </table>
             {editing && (
-              <div className="p-3">
+              <div className="p-4">
                 <BtnOutlined onClick={addStaff}>+ เพิ่มแถว</BtnOutlined>
               </div>
             )}
           </div>
 
           {/* Mobile calendar cards */}
-          <div className="md:hidden rounded-b-2xl space-y-3 pt-3">
+          <div className="md:hidden rounded-b-2xl space-y-4 pt-4">
             {mobileStaff.map((member, i) => {
               const realIdx = staff.indexOf(member)
               return (
@@ -485,39 +483,39 @@ export default function ScheduleTable() {
                   className="anim-fade-up rounded-2xl bg-[var(--md-surface)] md-elev-2 border border-gray-100 dark:border-gray-700/50 overflow-hidden transition-colors duration-300"
                   style={{ animationDelay: `${i * 55}ms` }}
                 >
-                  {/* Card header */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700/60">
+                  {/* Card header — 16dp padding */}
+                  <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-700/60">
                     {editing ? (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <input className="border dark:border-gray-600 rounded-xl px-2 py-1 text-sm w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
-                        <select className="border dark:border-gray-600 rounded-xl px-1 py-1 text-[10px] text-gray-500 dark:text-gray-400 bg-[var(--md-surface-variant)]" value={member.role} onChange={e => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
+                        <select className="md-label-m border dark:border-gray-600 rounded-xl px-2 py-1.5 text-gray-500 dark:text-gray-400 bg-[var(--md-surface-variant)]" value={member.role} onChange={e => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
                           {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                         </select>
-                        <button onClick={() => removeStaff(realIdx)} className="text-red-400 hover:text-red-600 transition-colors px-1">✕</button>
+                        <button onClick={() => removeStaff(realIdx)} className="text-red-400 hover:text-red-600 transition-colors w-8 h-8 flex items-center justify-center">✕</button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-medium text-[var(--md-on-surface)] text-base truncate">{member.name}</span>
-                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0 font-medium">{ROLE_LABEL[member.role]}</span>
+                        <span className="md-title-m text-[var(--md-on-surface)] truncate">{member.name}</span>
+                        <span className="md-label-m px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0">{ROLE_LABEL[member.role]}</span>
                       </div>
                     )}
-                    <div className="flex gap-3 text-sm shrink-0 ml-2">
-                      <span className="text-[var(--md-on-surface-var)]">ทำ <strong className="text-[var(--md-on-surface)]">{member.totalWork ?? (countWork(member) || '-')}</strong></span>
-                      <span className="text-blue-500 dark:text-blue-400">OT <strong>{member.totalOT ?? '-'}</strong></span>
-                      <span className="text-purple-500 dark:text-purple-400">เวร <strong>{member.totalNight ?? (countNight(member) || '-')}</strong></span>
+                    <div className="flex gap-3 shrink-0 ml-2">
+                      <span className="md-body-s text-[var(--md-on-surface-var)]">ทำ <strong className="text-[var(--md-on-surface)]">{member.totalWork ?? (countWork(member) || '-')}</strong></span>
+                      <span className="md-body-s text-blue-500 dark:text-blue-400">OT <strong>{member.totalOT ?? '-'}</strong></span>
+                      <span className="md-body-s text-purple-500 dark:text-purple-400">เวร <strong>{member.totalNight ?? (countNight(member) || '-')}</strong></span>
                     </div>
                   </div>
 
-                  {/* Calendar grid */}
-                  <div className="p-2.5 bg-[var(--md-surface-variant)]/30">
-                    <div className="grid grid-cols-7 gap-1.5 mb-1">
+                  {/* Calendar grid — 16dp padding, 8dp gap */}
+                  <div className="p-4 bg-[var(--md-surface-variant)]/30">
+                    <div className="grid grid-cols-7 gap-2 mb-2">
                       {['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'].map((d, ci) => (
-                        <div key={d} className={`text-center text-[10px] font-medium py-0.5 ${ci >= 5 ? 'text-red-400 dark:text-red-500' : 'text-[var(--md-on-surface-var)]'}`}>{d}</div>
+                        <div key={d} className={`md-label-s text-center py-1 ${ci >= 5 ? 'text-red-400 dark:text-red-500' : 'text-[var(--md-on-surface-var)]'}`}>{d}</div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-7 gap-1.5">
+                    <div className="grid grid-cols-7 gap-2">
                       {Array.from({ length: calOffset }, (_, i) => (
-                        <div key={`s${i}`} className={`rounded-2xl min-h-[58px] ${i >= 5 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}`} />
+                        <div key={`s${i}`} className={`rounded-2xl min-h-[56px] ${i >= 5 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}`} />
                       ))}
                       {member.shifts.map((shift, dayIdx) => {
                         const day = dayIdx + 1
@@ -530,14 +528,14 @@ export default function ScheduleTable() {
                             key={dayIdx}
                             onMouseDown={editing ? addRipple : undefined}
                             onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
-                            className={`md-state flex flex-col items-center justify-between rounded-2xl border py-1.5 min-h-[58px] transition-all duration-150 ${
+                            className={`md-state flex flex-col items-center justify-between rounded-2xl border py-2 min-h-[56px] transition-all duration-150 ${
                               isRed
                                 ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/60'
                                 : 'bg-[var(--md-surface)] border-gray-100 dark:border-gray-700/50'
                             } ${editing ? 'cursor-pointer active:scale-95' : ''}`}
                           >
-                            <span className={`text-sm font-bold leading-none ${isRed ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>{day}</span>
-                            <span className={`text-base leading-none flex items-center justify-center h-5 ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
+                            <span className={`md-label-l leading-none ${isRed ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>{day}</span>
+                            <span className={`md-body-l leading-none flex items-center justify-center h-5 ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
                               {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
                             </span>
                           </div>
@@ -545,7 +543,7 @@ export default function ScheduleTable() {
                       })}
                       {Array.from({ length: calEndPad }, (_, i) => {
                         const colIdx = (calOffset + totalDays + i) % 7
-                        return <div key={`e${i}`} className={`rounded-2xl min-h-[58px] ${colIdx >= 5 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}`} />
+                        return <div key={`e${i}`} className={`rounded-2xl min-h-[56px] ${colIdx >= 5 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}`} />
                       })}
                     </div>
                   </div>
@@ -553,7 +551,7 @@ export default function ScheduleTable() {
               )
             })}
             {editing && (
-              <div className="pt-1 pb-2">
+              <div className="pt-1 pb-4">
                 <BtnOutlined onClick={addStaff} className="w-full justify-center">+ เพิ่มคน</BtnOutlined>
               </div>
             )}
@@ -562,7 +560,7 @@ export default function ScheduleTable() {
         </div>{/* end contentKey wrapper */}
 
         {/* Footer */}
-        <div className="anim-fade-up bg-[var(--md-surface)] md-elev-1 mt-3 rounded-2xl px-4 py-3 sm:px-6 text-xs text-[var(--md-on-surface-var)] space-y-1 transition-colors duration-300">
+        <div className="anim-fade-up bg-[var(--md-surface)] md-elev-1 mt-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5 md-body-s text-[var(--md-on-surface-var)] space-y-1.5 transition-colors duration-300">
           <p>หมายเหตุ: S = standby</p>
           <p>เงินเวรพยาบาล 1,200/เวร</p>
           <p>เงินเวรนักเทคโนหัวใจ 1,600/เวร เวรละ 200 บาท</p>
