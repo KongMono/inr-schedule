@@ -293,30 +293,34 @@ export default function ScheduleTable() {
       <div className="max-w-full">
 
         {/* ── MD3 Top App Bar ── */}
-        <div className="bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-4 sm:px-6 sm:py-5 transition-colors duration-300">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 text-center">
-              <p className="md-body-m text-[var(--md-on-surface-var)]">ตารางเวร ประจำเดือน</p>
-              <h1 className="md-headline-s sm:md-headline-m text-blue-700 dark:text-blue-400 mt-1">
-                {THAI_MONTHS[selMonth]} {selYear}
-              </h1>
-              {editing ? (
-                <input
-                  className="mt-2 md-body-m text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
-                  value={department}
-                  onChange={e => updateCurrent(m => ({ ...m, department: e.target.value }))}
-                />
-              ) : (
-                <p className="md-body-m text-[var(--md-on-surface-var)] mt-1">{department}</p>
-              )}
-            </div>
+        <div className="relative bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-6 sm:px-6 sm:py-7 transition-colors duration-300">
+
+          {/* Dark mode toggle — absolute so it doesn't affect centering */}
+          <div className="absolute top-4 right-4">
             <BtnIcon onClick={toggleDark} title={dark ? 'Light mode' : 'Dark mode'}>
               {dark ? '☀' : '☾'}
             </BtnIcon>
           </div>
 
+          {/* Centered title block */}
+          <div className="text-center">
+            <p className="anim-header-1 md-body-m text-[var(--md-on-surface-var)]">ตารางเวร ประจำเดือน</p>
+            <h1 key={`${selMonth}-${selYear}`} className="anim-pop md-headline-s sm:md-headline-m text-blue-700 dark:text-blue-400 mt-2">
+              {THAI_MONTHS[selMonth]} {selYear}
+            </h1>
+            {editing ? (
+              <input
+                className="anim-header-3 mt-2 md-body-m text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
+                value={department}
+                onChange={e => updateCurrent(m => ({ ...m, department: e.target.value }))}
+              />
+            ) : (
+              <p className="anim-header-3 md-body-m text-[var(--md-on-surface-var)] mt-2">{department}</p>
+            )}
+          </div>
+
           {/* Month nav */}
-          <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
+          <div className="anim-header-4 flex flex-wrap justify-center items-center gap-2 mt-5">
             <BtnIcon onClick={() => stepMonth(-1)}>‹</BtnIcon>
 
             <select
