@@ -135,7 +135,7 @@ function ThemeSwitch({ dark, onToggle }: { dark: boolean; onToggle: () => void }
       aria-checked={dark}
       onClick={onToggle}
       title={dark ? 'เปลี่ยนเป็น Light mode' : 'เปลี่ยนเป็น Dark mode'}
-      className="relative flex items-center cursor-pointer select-none focus:outline-none group"
+      className="relative flex items-center cursor-pointer select-none focus:outline-none group p-2 -m-2"
     >
       {/* Track */}
       <span className={`relative inline-flex items-center w-14 h-8 rounded-full transition-colors duration-300 ease-in-out border-2 ${
