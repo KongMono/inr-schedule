@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   SHIFT_LABELS,
   THAI_MONTHS,
@@ -8,14 +8,8 @@ import {
   type ShiftCode,
   type StaffMember,
 } from '@/data/schedule'
-import {
-  loadSchedules,
-  saveSchedules,
-  resetSchedules,
-  createEmptyMonth,
-  emptyStaff,
-  nextShift,
-} from '@/lib/scheduleStore'
+import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
+import { fetchSchedules, saveMonth, removeMonth, resetAll } from '@/lib/scheduleRepo'
 
 const SHIFT_STYLE: Record<ShiftCode, string> = {
   M: 'text-blue-700 font-semibold',
@@ -91,18 +85,33 @@ export default function ScheduleTable() {
   const [editMode, setEditMode] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
 
-  // โหลดจาก localStorage หลัง mount (กัน SSR mismatch)
+  // โหลดจาก Supabase หลัง mount (กัน SSR mismatch)
   useEffect(() => {
-    const loaded = loadSchedules()
-    setSchedules(loaded)
-    setSelected(loaded.length - 1)
-    setHydrated(true)
+    let alive = true
+    fetchSchedules().then((loaded) => {
+      if (!alive) return
+      setSchedules(loaded)
+      setSelected(loaded.length - 1)
+      setHydrated(true)
+    })
+    return () => {
+      alive = false
+    }
   }, [])
 
-  // persist ทุกครั้งที่เปลี่ยน
+  // บันทึกเดือนที่กำลังดู → Supabase (debounce กันยิงถี่ตอนคลิก cell)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (hydrated) saveSchedules(schedules)
-  }, [schedules, hydrated])
+    if (!hydrated) return
+    const idx = Math.min(selected, schedules.length - 1)
+    const month = schedules[idx]
+    if (!month) return
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => saveMonth(month), 600)
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+    }
+  }, [schedules, selected, hydrated])
 
   if (!hydrated || schedules.length === 0) {
     return <div className="min-h-screen bg-gray-100 p-4 text-gray-400 text-sm">กำลังโหลด...</div>
@@ -150,14 +159,17 @@ export default function ScheduleTable() {
   }
   function deleteMonth() {
     if (schedules.length <= 1) return
+    removeMonth(data.month, data.thaiYear)
     setSchedules((prev) => prev.filter((_, i) => i !== safeSelected))
     setSelected((s) => Math.max(0, s - 1))
   }
   function doReset() {
-    const seed = resetSchedules()
-    setSchedules(seed)
-    setSelected(seed.length - 1)
-    setEditMode(false)
+    if (!confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้น? (ลบทุกเดือนใน cloud)')) return
+    resetAll().then((seed) => {
+      setSchedules(seed)
+      setSelected(seed.length - 1)
+      setEditMode(false)
+    })
   }
 
   const numOrUndef = (v: string) => (v === '' ? undefined : Number(v))
