@@ -63,6 +63,10 @@ function Legend() {
   return (
     <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 sm:gap-4 mt-3 text-xs sm:text-sm">
       <span className="flex items-center gap-1">
+        <span className="text-gray-400 text-xs">บ/ด</span>
+        <span className="text-gray-600">เวรบ่ายดึก</span>
+      </span>
+      <span className="flex items-center gap-1">
         <span className="text-blue-700 font-semibold text-lg">/</span>
         <span className="text-gray-600">แพทย์เวร</span>
       </span>
@@ -73,10 +77,6 @@ function Legend() {
       <span className="flex items-center gap-1">
         <span className="text-purple-700 font-semibold">S</span>
         <span className="text-gray-600">standby</span>
-      </span>
-      <span className="flex items-center gap-1">
-        <span className="text-gray-400 text-xs">บ/ด</span>
-        <span className="text-gray-600">เวรบ่ายดึก</span>
       </span>
       <span className="flex items-center gap-1 bg-red-50 px-2 rounded border border-red-200 text-red-500 text-xs">
         วงกลม = วันหยุดราชการ
