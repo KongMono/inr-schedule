@@ -35,6 +35,8 @@ const SHIFT_DISPLAY: Record<ShiftCode, string> = {
   '-': '',
 }
 
+const DAY_ABBR = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+
 const ROLE_BG: Record<string, string> = {
   doctor: 'bg-blue-50',
   nurse: 'bg-white',
@@ -143,6 +145,10 @@ export default function ScheduleTable() {
   const days = Array.from({ length: totalDays }, (_, i) => i + 1)
   const mobileStaff = editing ? staff : staff.filter((m) => m.name)
   const numOrUndef = (v: string) => (v === '' ? undefined : Number(v))
+
+  // calendar grid: เริ่มต้นด้วย offset (จ=0 ... อา=6) ก่อนวันที่ 1
+  const calOffset = (new Date(data.year, data.month - 1, 1).getDay() + 6) % 7
+  const calEndPad = (calOffset + totalDays) % 7 === 0 ? 0 : 7 - ((calOffset + totalDays) % 7)
 
   function unlock(pin: string): boolean {
     if (pin !== EDIT_PIN) return false
@@ -305,12 +311,14 @@ export default function ScheduleTable() {
                 <th className="border border-gray-500 px-3 py-2 text-left w-28 sticky left-8 z-20 bg-gray-700">ชื่อ-นามสกุล</th>
                 {days.map((d) => {
                   const isWeekend = weekendDays.includes(d)
+                  const dayAbbr = DAY_ABBR[new Date(data.year, data.month - 1, d).getDay()]
                   return (
                     <th
                       key={d}
                       onClick={editing ? () => toggleWeekend(d) : undefined}
-                      className={`border border-gray-500 w-7 py-2 text-center ${isWeekend ? 'bg-red-700' : ''} ${editing ? 'cursor-pointer' : ''}`}
+                      className={`border border-gray-500 w-7 py-1 text-center ${isWeekend ? 'bg-red-700' : ''} ${editing ? 'cursor-pointer' : ''}`}
                     >
+                      <div className="text-[8px] leading-none mb-0.5 opacity-75">{dayAbbr}</div>
                       <div className={isWeekend ? 'rounded-full border-2 border-white w-5 h-5 flex items-center justify-center mx-auto text-xs' : ''}>
                         {d}
                       </div>
@@ -410,50 +418,76 @@ export default function ScheduleTable() {
           )}
         </div>
 
-        {/* ===== Mobile: card list ===== */}
-        <div className="md:hidden bg-gray-100 rounded-b-xl space-y-3 pt-3">
+        {/* ===== Mobile: calendar cards ===== */}
+        <div className="md:hidden bg-gray-100 rounded-b-xl space-y-4 pt-3">
           {mobileStaff.map((member, i) => {
             const realIdx = staff.indexOf(member)
             return (
-              <div key={i} className={`rounded-xl shadow-sm border border-gray-200 p-3 ${ROLE_BG[member.role]}`}>
-                <div className="flex items-center justify-between mb-2 gap-2">
+              <div key={i} className="rounded-2xl bg-slate-50 shadow border border-slate-200 overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
                   {editing ? (
-                    <div className="flex items-center gap-1 min-w-0">
-                      <input className="border rounded px-1 py-0.5 text-sm w-28" value={member.name} placeholder="ชื่อ" onChange={(e) => patchStaff(realIdx, { name: e.target.value })} />
-                      <select className="border rounded px-1 py-0.5 text-[10px] text-gray-500" value={member.role} onChange={(e) => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <input className="border rounded-lg px-2 py-1 text-sm w-28 bg-white" value={member.name} placeholder="ชื่อ" onChange={(e) => patchStaff(realIdx, { name: e.target.value })} />
+                      <select className="border rounded-lg px-1 py-1 text-[10px] text-gray-500 bg-white" value={member.role} onChange={(e) => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
                         {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                       </select>
-                      <button onClick={() => removeStaff(realIdx)} className="text-red-500 text-xs px-1">✕</button>
+                      <button onClick={() => removeStaff(realIdx)} className="text-red-400 text-sm px-1">✕</button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-semibold text-gray-800 truncate">{member.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 shrink-0">{ROLE_LABEL[member.role]}</span>
+                      <span className="font-bold text-gray-800 text-base truncate">{member.name}</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-500 shrink-0">{ROLE_LABEL[member.role]}</span>
                     </div>
                   )}
-                  <div className="flex gap-2 text-xs shrink-0">
-                    <span className="text-gray-700">ทำ {member.totalWork ?? (countWork(member) || '-')}</span>
-                    <span className="text-blue-600">OT {member.totalOT ?? '-'}</span>
-                    <span className="text-purple-600">เวร {member.totalNight ?? (countNight(member) || '-')}</span>
+                  <div className="flex gap-3 text-sm shrink-0">
+                    <span className="text-gray-700">ทำ <strong>{member.totalWork ?? (countWork(member) || '-')}</strong></span>
+                    <span className="text-blue-500">OT <strong>{member.totalOT ?? '-'}</strong></span>
+                    <span className="text-purple-500">เวร <strong>{member.totalNight ?? (countNight(member) || '-')}</strong></span>
                   </div>
                 </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {member.shifts.map((shift, dayIdx) => {
-                    const day = dayIdx + 1
-                    const isWeekend = weekendDays.includes(day)
-                    return (
-                      <div
-                        key={dayIdx}
-                        onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
-                        className={`flex flex-col items-center justify-center rounded border py-1 ${isWeekend ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'} ${editing ? 'cursor-pointer active:bg-yellow-100' : ''}`}
-                      >
-                        <span className={`text-[10px] leading-none ${isWeekend ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{day}</span>
-                        <span className={`h-4 flex items-center ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
-                          {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
-                        </span>
-                      </div>
-                    )
-                  })}
+
+                {/* Calendar grid */}
+                <div className="p-2.5">
+                  {/* Day-of-week header */}
+                  <div className="grid grid-cols-7 gap-1.5 mb-1">
+                    {['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'].map((d, ci) => (
+                      <div key={d} className={`text-center text-[10px] font-semibold py-0.5 ${ci >= 5 ? 'text-red-400' : 'text-gray-400'}`}>{d}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {/* empty cells before day 1 */}
+                    {Array.from({ length: calOffset }, (_, i) => (
+                      <div key={`s${i}`} className={`rounded-xl min-h-[58px] ${i >= 5 ? 'bg-red-50/40' : ''}`} />
+                    ))}
+                    {/* day cells */}
+                    {member.shifts.map((shift, dayIdx) => {
+                      const day = dayIdx + 1
+                      const colIdx = (calOffset + dayIdx) % 7
+                      const isWeekendCol = colIdx >= 5
+                      const isHoliday = weekendDays.includes(day) && !isWeekendCol
+                      const isRed = isWeekendCol || isHoliday
+                      return (
+                        <div
+                          key={dayIdx}
+                          onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
+                          className={`flex flex-col items-center justify-between rounded-xl border py-1.5 min-h-[58px] ${
+                            isRed ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'
+                          } ${editing ? 'cursor-pointer active:bg-yellow-50' : ''}`}
+                        >
+                          <span className={`text-sm font-bold leading-none ${isRed ? 'text-red-600' : 'text-gray-700'}`}>{day}</span>
+                          <span className={`text-base leading-none flex items-center justify-center h-5 ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
+                            {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
+                          </span>
+                        </div>
+                      )
+                    })}
+                    {/* empty cells to complete last row */}
+                    {Array.from({ length: calEndPad }, (_, i) => {
+                      const colIdx = (calOffset + totalDays + i) % 7
+                      return <div key={`e${i}`} className={`rounded-xl min-h-[58px] ${colIdx >= 5 ? 'bg-red-50/40' : ''}`} />
+                    })}
+                  </div>
                 </div>
               </div>
             )
