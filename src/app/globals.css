@@ -2,28 +2,31 @@
 @variant dark (&:where(.dark, .dark *));
 
 /* ── MD3 Color Tokens ────────────────────────────────── */
+/* Radiology center theme — medical teal / cyan (imaging viewer vibe) */
 :root {
-  --md-primary:           #1565C0;
+  --md-primary:           #0E7C8B;
   --md-on-primary:        #ffffff;
-  --md-primary-container: #DBEAFE;
+  --md-primary-container: #CCFBF1;
+  --md-accent:            #06B6D4;
   --md-surface:           #ffffff;
-  --md-surface-variant:   #F1F0F4;
-  --md-background:        #F3F4F6;
-  --md-on-surface:        #1C1B1F;
-  --md-on-surface-var:    #49454F;
-  --md-outline:           #79747E;
+  --md-surface-variant:   #ECF6F8;
+  --md-background:        #ECFDFF;
+  --md-on-surface:        #0B2027;
+  --md-on-surface-var:    #41575E;
+  --md-outline:           #6E8A90;
   --md-error:             #B3261E;
 }
 .dark {
-  --md-primary:           #90CAF9;
-  --md-on-primary:        #003258;
-  --md-primary-container: #1E3A5F;
-  --md-surface:           #1E2432;
-  --md-surface-variant:   #2A3142;
-  --md-background:        #111827;
-  --md-on-surface:        #E6E1E5;
-  --md-on-surface-var:    #CAC4D0;
-  --md-outline:           #938F99;
+  --md-primary:           #5EEAD4;
+  --md-on-primary:        #00382F;
+  --md-primary-container: #134E4A;
+  --md-accent:            #22D3EE;
+  --md-surface:           #11272E;
+  --md-surface-variant:   #16323A;
+  --md-background:        #0B2027;
+  --md-on-surface:        #E0F2F1;
+  --md-on-surface-var:    #B6CBCF;
+  --md-outline:           #6E8A90;
   color-scheme: dark;
 }
 

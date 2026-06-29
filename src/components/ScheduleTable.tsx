@@ -70,7 +70,7 @@ function BtnFilled({ children, onClick, className = '' }: {
     <button
       onClick={onClick}
       onMouseDown={addRipple}
-      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full bg-blue-700 dark:bg-blue-600 text-white shadow-sm transition-all duration-200 hover:shadow-md active:scale-95 ${className}`}
+      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full bg-teal-700 dark:bg-teal-600 text-white shadow-sm transition-all duration-200 hover:shadow-md active:scale-95 ${className}`}
     >
       {children}
     </button>
@@ -84,7 +84,7 @@ function BtnTonal({ children, onClick, className = '' }: {
     <button
       onClick={onClick}
       onMouseDown={addRipple}
-      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 transition-all duration-200 active:scale-95 ${className}`}
+      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 transition-all duration-200 active:scale-95 ${className}`}
     >
       {children}
     </button>
@@ -118,7 +118,7 @@ function BtnIcon({ children, onClick, title = '', active = false }: {
       title={title}
       className={`md-state relative overflow-hidden w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all duration-200 active:scale-90 ${
         active
-          ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300'
+          ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300'
           : 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
       }`}
     >
@@ -141,13 +141,13 @@ function ThemeSwitch({ dark, onToggle }: { dark: boolean; onToggle: () => void }
       {/* Track */}
       <span className={`relative inline-flex items-center w-14 h-8 rounded-full transition-colors duration-300 ease-in-out border-2 ${
         dark
-          ? 'bg-blue-600 border-blue-600'
+          ? 'bg-teal-600 border-teal-600'
           : 'bg-gray-200 dark:bg-gray-600 border-gray-300 dark:border-gray-500'
-      } group-focus-visible:ring-2 group-focus-visible:ring-blue-400 group-focus-visible:ring-offset-2`}>
+      } group-focus-visible:ring-2 group-focus-visible:ring-teal-400 group-focus-visible:ring-offset-2`}>
         {/* Thumb */}
         <span className={`absolute flex items-center justify-center rounded-full shadow-md transition-all duration-300 ease-in-out ${
           dark
-            ? 'w-7 h-7 left-[calc(100%-1.875rem)] bg-white text-blue-600'
+            ? 'w-7 h-7 left-[calc(100%-1.875rem)] bg-white text-teal-600'
             : 'w-5 h-5 left-[3px] bg-white text-gray-500'
         }`}>
           <span className={`transition-all duration-300 leading-none ${dark ? 'text-sm' : 'text-xs'}`}>
@@ -240,7 +240,7 @@ export default function ScheduleTable() {
     return (
       <div className="min-h-screen bg-[var(--md-background)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 anim-fade-up">
-          <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-teal-600 border-t-transparent animate-spin" />
           <p className="text-sm text-gray-400">กำลังโหลด…</p>
         </div>
       </div>
@@ -334,13 +334,17 @@ export default function ScheduleTable() {
 
           {/* Centered title block */}
           <div className="text-center">
-            <p className="anim-header-1 md-body-m text-[var(--md-on-surface-var)]">ตารางเวร ประจำเดือน</p>
-            <h1 key={`${selMonth}-${selYear}`} className="anim-pop md-headline-s sm:md-headline-m text-blue-700 dark:text-blue-400 mt-2">
+            <div className="anim-header-1 flex items-center justify-center gap-2 mb-3">
+              <span className="grid place-items-center w-9 h-9 rounded-full bg-[var(--md-primary-container)] text-teal-700 dark:text-teal-200 text-lg shadow-sm">🩻</span>
+              <span className="md-title-m sm:md-title-l tracking-wide text-teal-700 dark:text-teal-300 font-semibold">ศูนย์รังสี</span>
+            </div>
+            <p className="anim-header-2 md-body-m text-[var(--md-on-surface-var)]">ตารางเวร ประจำเดือน</p>
+            <h1 key={`${selMonth}-${selYear}`} className="anim-pop md-headline-s sm:md-headline-m text-teal-700 dark:text-teal-400 mt-2">
               {THAI_MONTHS[selMonth]} {selYear}
             </h1>
             {editing ? (
               <input
-                className="anim-header-3 mt-2 md-body-m text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
+                className="anim-header-3 mt-2 md-body-m text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-teal-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
                 value={department}
                 onChange={e => updateCurrent(m => ({ ...m, department: e.target.value }))}
               />
@@ -356,7 +360,7 @@ export default function ScheduleTable() {
             <select
               value={selMonth}
               onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelMonth(Number(e.target.value)) }}
-              className="md-label-l border border-gray-300 dark:border-gray-600 rounded-full h-10 px-4 text-[var(--md-on-surface)] bg-[var(--md-surface)] focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+              className="md-label-l border border-gray-300 dark:border-gray-600 rounded-full h-10 px-4 text-[var(--md-on-surface)] bg-[var(--md-surface)] focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                 <option key={m} value={m}>{THAI_MONTHS[m]}</option>
@@ -367,7 +371,7 @@ export default function ScheduleTable() {
               type="number"
               value={selYear}
               onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelYear(Number(e.target.value)) }}
-              className="md-label-l border border-gray-300 dark:border-gray-600 rounded-full h-10 px-3 text-[var(--md-on-surface)] bg-[var(--md-surface)] w-20 text-center focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+              className="md-label-l border border-gray-300 dark:border-gray-600 rounded-full h-10 px-3 text-[var(--md-on-surface)] bg-[var(--md-surface)] w-20 text-center focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
             />
 
             <BtnIcon onClick={() => stepMonth(1)}>›</BtnIcon>
@@ -466,7 +470,7 @@ export default function ScheduleTable() {
                           <td
                             key={dayIdx}
                             onClick={editing ? () => cycleCell(rowIdx, dayIdx) : undefined}
-                            className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${editing ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 active:bg-blue-100 dark:active:bg-blue-900/50' : ''}`}
+                            className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${editing ? 'cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:bg-teal-100 dark:active:bg-teal-900/50' : ''}`}
                           >
                             <span className={SHIFT_STYLE[shift]} title={SHIFT_LABELS[shift]}>
                               {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
@@ -491,7 +495,7 @@ export default function ScheduleTable() {
                       ) : (
                         <>
                           <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-[var(--md-on-surface)] py-1.5">{member.totalWork ?? (countWork(member) > 0 ? countWork(member) : '')}</td>
-                          <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-blue-600 dark:text-blue-400 py-1.5">{member.totalOT ?? ''}</td>
+                          <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-teal-600 dark:text-teal-400 py-1.5">{member.totalOT ?? ''}</td>
                           <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-purple-600 dark:text-purple-400 py-1.5">{member.totalNight ?? (countNight(member) > 0 ? countNight(member) : '')}</td>
                         </>
                       )}
@@ -521,7 +525,7 @@ export default function ScheduleTable() {
                   <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-700/60">
                     {editing ? (
                       <div className="flex items-center gap-2 min-w-0">
-                        <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-400" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
+                        <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
                         <select className="md-label-m border dark:border-gray-600 rounded-xl px-2 py-1.5 text-gray-500 dark:text-gray-400 bg-[var(--md-surface-variant)]" value={member.role} onChange={e => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
                           {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                         </select>
@@ -530,12 +534,12 @@ export default function ScheduleTable() {
                     ) : (
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="md-title-m text-[var(--md-on-surface)] truncate">{member.name}</span>
-                        <span className="md-label-m px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 shrink-0">{ROLE_LABEL[member.role]}</span>
+                        <span className="md-label-m px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 shrink-0">{ROLE_LABEL[member.role]}</span>
                       </div>
                     )}
                     <div className="flex gap-3 shrink-0 ml-2">
                       <span className="md-body-s text-[var(--md-on-surface-var)]">ทำ <strong className="text-[var(--md-on-surface)]">{member.totalWork ?? (countWork(member) || '-')}</strong></span>
-                      <span className="md-body-s text-blue-500 dark:text-blue-400">OT <strong>{member.totalOT ?? '-'}</strong></span>
+                      <span className="md-body-s text-teal-500 dark:text-teal-400">OT <strong>{member.totalOT ?? '-'}</strong></span>
                       <span className="md-body-s text-purple-500 dark:text-purple-400">เวร <strong>{member.totalNight ?? (countNight(member) || '-')}</strong></span>
                     </div>
                   </div>
@@ -627,7 +631,7 @@ function PinModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (pin
           value={pin}
           onChange={e => { setPin(e.target.value); setErr(false) }}
           onKeyDown={e => e.key === 'Enter' && submit()}
-          className={`border rounded-xl px-4 py-3 w-full text-center tracking-widest text-lg bg-[var(--md-surface-variant)] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all ${err ? 'border-red-400 ring-1 ring-red-400' : 'border-gray-300 dark:border-gray-600'}`}
+          className={`border rounded-xl px-4 py-3 w-full text-center tracking-widest text-lg bg-[var(--md-surface-variant)] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all ${err ? 'border-red-400 ring-1 ring-red-400' : 'border-gray-300 dark:border-gray-600'}`}
           placeholder="••••••••"
         />
         {err && <p className="text-xs text-red-500 dark:text-red-400 mt-1.5">PIN ไม่ถูกต้อง</p>}
