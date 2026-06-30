@@ -15,6 +15,7 @@ import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules } 
 const EDIT_PIN = '11223344'
 const EDIT_KEY = 'inr-schedule:edit'
 const THEME_KEY = 'inr-schedule:theme'
+const ME_KEY = 'inr-schedule:me'
 
 // ── Shift styling (MD3 color-aware) ─────────────────────────────
 const SHIFT_STYLE: Record<ShiftCode, string> = {
@@ -22,7 +23,7 @@ const SHIFT_STYLE: Record<ShiftCode, string> = {
   A:    'text-red-600 dark:text-red-400 font-bold text-lg leading-none',
   N:    'text-purple-600 dark:text-purple-400 font-medium',
   N2:   'text-purple-600 dark:text-purple-400 font-medium',
-  OFF:  'text-gray-400 dark:text-gray-500 text-xs',
+  OFF:  'text-gray-600 dark:text-gray-300 font-medium text-xs',
   SWAP: 'text-orange-500 dark:text-orange-400 text-xs',
   '-':  'text-gray-300 dark:text-gray-600',
 }
@@ -166,7 +167,7 @@ function Legend() {
   return (
     <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 sm:gap-4 mt-3 text-xs sm:text-sm">
       {[
-        { sym: 'บ/ด', symCls: 'text-gray-400 dark:text-gray-500 text-xs', label: 'เวรบ่ายดึก' },
+        { sym: 'บ/ด', symCls: 'text-gray-600 dark:text-gray-300 font-medium text-xs', label: 'เวรบ่ายดึก' },
         { sym: '/',   symCls: 'text-blue-600 dark:text-blue-400 font-medium text-lg', label: 'แพทย์เวร' },
         { sym: '✕',   symCls: 'text-red-600 dark:text-red-400 font-bold text-lg', label: 'ไม่อยู่เวร' },
         { sym: 'S',   symCls: 'text-purple-600 dark:text-purple-400 font-medium', label: 'standby' },
@@ -188,6 +189,78 @@ const THAI_DAY_FULL = ['อาทิตย์','จันทร์','อัง�
 const WORKING: ShiftCode[] = ['M', 'N', 'N2', 'OFF', 'SWAP']
 const isWorking = (s: ShiftCode) => WORKING.includes(s)
 
+// นับเวรของคนหนึ่งในเดือน — สำหรับสรุป "เวรของฉัน"
+function shiftCounts(m: StaffMember) {
+  let M = 0, S = 0, OFF = 0, SWAP = 0
+  for (const s of m.shifts) {
+    if (s === 'M') M++
+    else if (s === 'N' || s === 'N2') S++
+    else if (s === 'OFF') OFF++
+    else if (s === 'SWAP') SWAP++
+  }
+  return { M, S, OFF, SWAP }
+}
+const COUNT_LABELS: { key: 'M' | 'S' | 'OFF' | 'SWAP'; label: string }[] = [
+  { key: 'M', label: 'แพทย์เวร' }, { key: 'OFF', label: 'บ/ด' }, { key: 'S', label: 'standby' }, { key: 'SWAP', label: 'สลับ' },
+]
+
+// เงินเวร = จำนวน บ/ด (OFF) × อัตราตามตำแหน่ง (แพทย์ไม่คิด)
+const PAY_RATE: Record<string, number> = { nurse: 1200, tech: 1600, doctor: 0 }
+
+// ── วันหยุดราชการไทย (auto) — key: "เดือน-วัน" (เดือนแบบ 1-12) ──────
+// แสดงผลอย่างเดียว ไม่แตะ weekendDays ที่บันทึกไว้
+const THAI_HOLIDAYS: Record<number, Record<string, string>> = {
+  2026: {
+    '1-1': 'วันขึ้นปีใหม่',
+    '3-3': 'วันมาฆบูชา',
+    '4-6': 'วันจักรี',
+    '4-13': 'วันสงกรานต์', '4-14': 'วันสงกรานต์', '4-15': 'วันสงกรานต์',
+    '5-1': 'วันแรงงานแห่งชาติ',
+    '5-4': 'วันฉัตรมงคล',
+    '5-13': 'วันพืชมงคล',
+    '5-31': 'วันวิสาขบูชา',
+    '6-1': 'ชดเชยวันวิสาขบูชา',
+    '6-3': 'วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชินี',
+    '7-28': 'วันเฉลิมพระชนมพรรษา ร.10',
+    '7-29': 'วันอาสาฬหบูชา',
+    '7-30': 'วันเข้าพรรษา',
+    '8-12': 'วันแม่แห่งชาติ',
+    '10-13': 'วันนวมินทรมหาราช',
+    '10-23': 'วันปิยมหาราช',
+    '12-5': 'วันพ่อแห่งชาติ',
+    '12-7': 'ชดเชยวันพ่อแห่งชาติ',
+    '12-10': 'วันรัฐธรรมนูญ',
+    '12-31': 'วันสิ้นปี',
+  },
+  // 2570 (2027) — ใส่เฉพาะวันที่ตายตัว (วันพระจันทรคติเลื่อน ต้องเพิ่มภายหลัง)
+  2027: {
+    '1-1': 'วันขึ้นปีใหม่',
+    '4-6': 'วันจักรี',
+    '4-13': 'วันสงกรานต์', '4-14': 'วันสงกรานต์', '4-15': 'วันสงกรานต์',
+    '5-1': 'วันแรงงานแห่งชาติ',
+    '5-4': 'วันฉัตรมงคล',
+    '7-28': 'วันเฉลิมพระชนมพรรษา ร.10',
+    '8-12': 'วันแม่แห่งชาติ',
+    '10-13': 'วันนวมินทรมหาราช',
+    '10-23': 'วันปิยมหาราช',
+    '12-5': 'วันพ่อแห่งชาติ',
+    '12-10': 'วันรัฐธรรมนูญ',
+    '12-31': 'วันสิ้นปี',
+  },
+}
+
+// คืน map { วันที่: ชื่อวันหยุด } ของเดือนนั้น (gregYear = ค.ศ.)
+function holidaysOf(month: number, gregYear: number): Record<number, string> {
+  const y = THAI_HOLIDAYS[gregYear]
+  if (!y) return {}
+  const out: Record<number, string> = {}
+  for (const [k, name] of Object.entries(y)) {
+    const [mo, d] = k.split('-').map(Number)
+    if (mo === month) out[d] = name
+  }
+  return out
+}
+
 // กลุ่มเวรที่ "ทำงานวันนี้" เรียงตามความสำคัญ
 const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolean; dot: string; accent: string }[] = [
   { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-500',   accent: 'border-l-blue-400 dark:border-l-blue-500' },
@@ -197,11 +270,14 @@ const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolea
 ]
 
 // การ์ดชื่อคน — ชื่อ + ตำแหน่ง + ปุ่มโทร, มีแถบสีกลุ่มด้านซ้าย
-function PersonCard({ m, accent }: { m: StaffMember; accent: string }) {
+function PersonCard({ m, accent, isMe = false }: { m: StaffMember; accent: string; isMe?: boolean }) {
   return (
-    <div className={`flex items-center justify-between gap-2 pl-3 pr-2 py-2.5 rounded-xl border border-l-4 border-gray-100 dark:border-gray-700/50 bg-[var(--md-surface)] ${accent}`}>
+    <div className={`flex items-center justify-between gap-2 pl-3 pr-2 py-2.5 rounded-xl border border-l-4 border-gray-100 dark:border-gray-700/50 bg-[var(--md-surface)] ${accent} ${isMe ? 'ring-2 ring-teal-400 dark:ring-teal-500' : ''}`}>
       <div className="min-w-0">
-        <p className="md-body-m font-medium text-[var(--md-on-surface)] truncate">{m.name}</p>
+        <p className="md-body-m font-medium text-[var(--md-on-surface)] truncate flex items-center gap-1.5">
+          <span className="truncate">{m.name}</span>
+          {isMe && <span className="md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white shrink-0">ฉัน</span>}
+        </p>
         <p className="md-label-s text-[var(--md-on-surface-var)]">{ROLE_LABEL[m.role]}</p>
       </div>
       {m.phone && (
@@ -212,30 +288,64 @@ function PersonCard({ m, accent }: { m: StaffMember; accent: string }) {
 }
 
 // ── Today View — "who's on duty" board ───────────────────────────
-function TodayView({ schedules }: { schedules: ScheduleData[] }) {
+function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: string | null }) {
   const today = new Date()
   const month = today.getMonth() + 1
   const thaiYear = today.getFullYear() + 543
   const dayIdx = today.getDate() - 1
   const data = schedules.find(m => m.month === month && m.thaiYear === thaiYear)
-  const isHoliday = data ? data.weekendDays.includes(today.getDate()) : (today.getDay() === 0 || today.getDay() === 6)
+  const holName = holidaysOf(month, today.getFullYear())[today.getDate()]
+  const isWeekendToday = data ? data.weekendDays.includes(today.getDate()) : (today.getDay() === 0 || today.getDay() === 6)
+  const isHoliday = !!holName || isWeekendToday
 
   const named = data?.staff.filter(m => m.name) ?? []
   const shiftOf = (m: StaffMember): ShiftCode => m.shifts[dayIdx] ?? '-'
   const offToday = named.filter(m => !isWorking(shiftOf(m)))
   const anyWorking = named.some(m => isWorking(shiftOf(m)))
 
+  // "เวรของฉัน"
+  const me = meName ? named.find(m => m.name === meName) : undefined
+  const myShift = me ? shiftOf(me) : '-'
+  const myCounts = me ? shiftCounts(me) : null
+
   return (
     <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl p-4 sm:p-6 space-y-4">
       {/* Date hero */}
       <div className={`rounded-2xl px-5 py-5 text-center ${isHoliday ? 'bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50' : 'bg-teal-50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/50'}`}>
         <p className={`md-label-l ${isHoliday ? 'text-red-500 dark:text-red-400' : 'text-teal-600 dark:text-teal-400'}`}>
-          วัน{THAI_DAY_FULL[today.getDay()]}{isHoliday ? ' · วันหยุด' : ''}
+          วัน{THAI_DAY_FULL[today.getDay()]}{holName ? ` · ${holName}` : isWeekendToday ? ' · วันหยุด' : ''}
         </p>
         <p className={`md-headline-m font-medium mt-0.5 ${isHoliday ? 'text-red-600 dark:text-red-400' : 'text-teal-700 dark:text-teal-300'}`}>
           {today.getDate()} {THAI_MONTHS[month]} {thaiYear}
         </p>
       </div>
+
+      {/* เวรของฉัน */}
+      {me && (
+        <div className="anim-fade-up rounded-2xl border-2 border-teal-300 dark:border-teal-700 bg-teal-50/60 dark:bg-teal-950/40 px-4 py-3.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="md-title-s text-teal-700 dark:text-teal-300 flex items-center gap-1.5 min-w-0">
+              <span className="shrink-0">👤</span><span className="truncate">{me.name}</span>
+            </span>
+            <span className={`md-label-l shrink-0 px-3 py-1 rounded-full font-medium ${isWorking(myShift) ? 'bg-teal-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+              {isWorking(myShift) ? `${SHIFT_DISPLAY[myShift]} ${SHIFT_LABELS[myShift]}` : myShift === 'A' ? 'ไม่อยู่เวร' : 'ไม่มีเวร'}
+            </span>
+          </div>
+          {myCounts && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+              <span className="md-label-s text-[var(--md-on-surface-var)]">เดือนนี้:</span>
+              {COUNT_LABELS.filter(c => myCounts[c.key] > 0).map(c => (
+                <span key={c.key} className="md-label-s px-2 py-0.5 rounded-full bg-white/70 dark:bg-gray-800 text-[var(--md-on-surface)] border border-teal-100 dark:border-teal-900">
+                  {c.label} <strong className="text-teal-700 dark:text-teal-300">{myCounts[c.key]}</strong>
+                </span>
+              ))}
+              {COUNT_LABELS.every(c => myCounts[c.key] === 0) && (
+                <span className="md-label-s text-[var(--md-on-surface-var)]">ยังไม่มีเวร</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {!data ? (
         <p className="text-center text-[var(--md-on-surface-var)] py-6">ไม่มีข้อมูลเดือนนี้</p>
@@ -253,7 +363,7 @@ function TodayView({ schedules }: { schedules: ScheduleData[] }) {
                 <span className="md-label-m px-2 py-0.5 rounded-full bg-[var(--md-surface-variant)] text-[var(--md-on-surface-var)]">{people.length}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {people.map((m, i) => <PersonCard key={i} m={m} accent={g.accent} />)}
+                {people.map((m, i) => <PersonCard key={i} m={m} accent={g.accent} isMe={!!meName && m.name === meName} />)}
               </div>
             </section>
           )
@@ -269,7 +379,7 @@ function TodayView({ schedules }: { schedules: ScheduleData[] }) {
           </summary>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {offToday.map((m, i) => (
-              <span key={i} className="md-label-s px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">{m.name}</span>
+              <span key={i} className={`md-label-s px-2.5 py-1 rounded-full ${m.name === meName ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 ring-1 ring-teal-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'}`}>{m.name}{m.name === meName ? ' (ฉัน)' : ''}</span>
             ))}
           </div>
         </details>
@@ -279,7 +389,7 @@ function TodayView({ schedules }: { schedules: ScheduleData[] }) {
 }
 
 // ── Week View — matrix (desktop) + day cards (mobile) ────────────
-function WeekView({ schedules }: { schedules: ScheduleData[] }) {
+function WeekView({ schedules, meName }: { schedules: ScheduleData[]; meName: string | null }) {
   const today = new Date()
   const monday = new Date(today)
   monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
@@ -291,11 +401,14 @@ function WeekView({ schedules }: { schedules: ScheduleData[] }) {
 
   const cols = weekDays.map(d => {
     const dd = dataFor(d)
+    const holName = holidaysOf(d.getMonth() + 1, d.getFullYear())[d.getDate()]
+    const isWeekendRaw = dd ? dd.weekendDays.includes(d.getDate()) : (d.getDay() === 0 || d.getDay() === 6)
     return {
       d,
       dd,
+      holName,
       isToday: d.toDateString() === today.toDateString(),
-      isWeekend: dd ? dd.weekendDays.includes(d.getDate()) : (d.getDay() === 0 || d.getDay() === 6),
+      isWeekend: isWeekendRaw || !!holName, // ใช้คุมสีแดง (รวมวันหยุดราชการ)
     }
   })
 
@@ -307,8 +420,8 @@ function WeekView({ schedules }: { schedules: ScheduleData[] }) {
           <thead>
             <tr className="bg-gray-800 dark:bg-gray-950 text-white">
               <th className="border border-gray-600 px-2 py-2 text-left sticky left-0 z-20 bg-gray-800 dark:bg-gray-950 w-28 font-medium">ชื่อ-นามสกุล</th>
-              {cols.map(({ d, isToday, isWeekend }) => (
-                <th key={d.toISOString()} className={`border border-gray-600 w-12 py-1 text-center ${isToday ? 'bg-teal-700 dark:bg-teal-800' : isWeekend ? 'bg-red-800 dark:bg-red-950' : ''}`}>
+              {cols.map(({ d, isToday, isWeekend, holName }) => (
+                <th key={d.toISOString()} title={holName} className={`border border-gray-600 w-12 py-1 text-center ${isToday ? 'bg-teal-700 dark:bg-teal-800' : isWeekend ? 'bg-red-800 dark:bg-red-950' : ''}`}>
                   <div className="text-[8px] leading-none mb-0.5 opacity-70">{DAY_ABBR[d.getDay()]}</div>
                   <div className={isToday ? 'rounded-full border-2 border-white/80 w-5 h-5 flex items-center justify-center mx-auto' : ''}>{d.getDate()}</div>
                 </th>
@@ -317,17 +430,20 @@ function WeekView({ schedules }: { schedules: ScheduleData[] }) {
           </thead>
           <tbody>
             {members.map((member, rowIdx) => {
-              const bg = ROLE_BG[member.role]
+              const isMe = !!meName && member.name === meName
+              const bg = isMe ? 'bg-teal-100 dark:bg-teal-900' : ROLE_BG[member.role]
+              const meEdge = isMe ? 'border-y-2 border-y-teal-500 dark:border-y-teal-400' : ''
               return (
                 <tr key={rowIdx} className={`border-b dark:border-gray-700 ${bg}`}>
-                  <td className={`border border-gray-200 dark:border-gray-700 px-2 py-1.5 sticky left-0 z-10 font-medium text-[var(--md-on-surface)] whitespace-nowrap ${bg}`}>
+                  <td className={`border border-gray-200 dark:border-gray-700 px-2 py-1.5 sticky left-0 z-10 font-medium whitespace-nowrap ${bg} ${meEdge} ${isMe ? 'border-l-4 border-l-teal-500 dark:border-l-teal-400 text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}>
                     {member.phone ? <a href={telHref(member.phone)} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a> : member.name}
+                    {isMe && <span className="ml-1 md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white">ฉัน</span>}
                   </td>
                   {cols.map(({ d, dd, isWeekend, isToday }) => {
                     const staffInDay = dd?.staff[rowIdx]
                     const shift: ShiftCode = staffInDay?.shifts[d.getDate() - 1] ?? '-'
                     return (
-                      <td key={d.toISOString()} className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 ${isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${isToday ? 'ring-1 ring-inset ring-teal-400 dark:ring-teal-600' : ''}`}>
+                      <td key={d.toISOString()} className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${isToday ? 'ring-1 ring-inset ring-teal-400 dark:ring-teal-600' : ''}`}>
                         <span className={SHIFT_STYLE[shift]}>{SHIFT_DISPLAY[shift]}</span>
                       </td>
                     )
@@ -341,7 +457,7 @@ function WeekView({ schedules }: { schedules: ScheduleData[] }) {
 
       {/* Mobile day cards */}
       <div className="md:hidden p-3 space-y-3">
-        {cols.map(({ d, dd, isToday, isWeekend }, ci) => {
+        {cols.map(({ d, dd, isToday, isWeekend, holName }, ci) => {
           const dayStaff = dd?.staff.filter(m => m.name && isWorking(m.shifts[d.getDate() - 1] ?? '-')) ?? []
           return (
             <div
@@ -350,10 +466,13 @@ function WeekView({ schedules }: { schedules: ScheduleData[] }) {
               style={{ animationDelay: `${ci * 45}ms` }}
             >
               <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 rounded-t-2xl shadow-sm backdrop-blur ${isToday ? 'bg-teal-100/90 dark:bg-teal-950/85' : isWeekend ? 'bg-red-100/90 dark:bg-red-950/80' : 'bg-[var(--md-surface-variant)]'}`}>
-                <span className={`md-title-s ${isToday ? 'text-teal-700 dark:text-teal-300' : isWeekend ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>
-                  {THAI_DAY_FULL[d.getDay()]} {d.getDate()} {THAI_MONTHS[d.getMonth() + 1]} {d.getFullYear() + 543}
-                </span>
-                {isToday && <span className="md-label-s px-2 py-0.5 rounded-full bg-teal-600 text-white">วันนี้</span>}
+                <div className="min-w-0">
+                  <span className={`md-title-s ${isToday ? 'text-teal-700 dark:text-teal-300' : isWeekend ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>
+                    {THAI_DAY_FULL[d.getDay()]} {d.getDate()} {THAI_MONTHS[d.getMonth() + 1]} {d.getFullYear() + 543}
+                  </span>
+                  {holName && <span className="block md-label-s text-red-500 dark:text-red-400">🔴 {holName}</span>}
+                </div>
+                {isToday && <span className="md-label-s px-2 py-0.5 rounded-full bg-teal-600 text-white shrink-0">วันนี้</span>}
               </div>
               <div className="px-4 py-3">
                 {dayStaff.length === 0 ? (
@@ -362,9 +481,13 @@ function WeekView({ schedules }: { schedules: ScheduleData[] }) {
                   <div className="space-y-1.5">
                     {dayStaff.map((m, i) => {
                       const shift: ShiftCode = m.shifts[d.getDate() - 1] ?? '-'
+                      const isMe = !!meName && m.name === meName
                       return (
-                        <div key={i} className="flex items-center justify-between gap-2">
-                          <span className="md-body-m text-[var(--md-on-surface)] truncate">{m.name}</span>
+                        <div key={i} className={`flex items-center justify-between gap-2 ${isMe ? '-mx-1 px-1 rounded-lg bg-teal-50 dark:bg-teal-950/50' : ''}`}>
+                          <span className={`md-body-m truncate flex items-center gap-1 ${isMe ? 'font-semibold text-teal-700 dark:text-teal-300' : 'text-[var(--md-on-surface)]'}`}>
+                            <span className="truncate">{m.name}</span>
+                            {isMe && <span className="md-label-s px-1 rounded bg-teal-600 text-white shrink-0">ฉัน</span>}
+                          </span>
                           <span className={`md-label-s shrink-0 px-2 py-0.5 rounded-full ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
                             {SHIFT_DISPLAY[shift]} {SHIFT_LABELS[shift]}
                           </span>
@@ -382,6 +505,58 @@ function WeekView({ schedules }: { schedules: ScheduleData[] }) {
   )
 }
 
+// ── Month Summary — จำนวนเวร + เงินเวร ────────────────────────────
+function MonthSummary({ data }: { data: ScheduleData }) {
+  const rows = data.staff.filter(m => m.name).map(m => {
+    const c = shiftCounts(m)
+    const rate = PAY_RATE[m.role] ?? 0
+    return { m, c, pay: c.OFF * rate }
+  })
+  const total = rows.reduce((s, r) => s + r.pay, 0)
+  const fmt = (n: number) => n.toLocaleString('th-TH')
+  if (!rows.length) return null
+  return (
+    <div className="bg-[var(--md-surface)] md-elev-1 rounded-2xl mt-4 p-4 sm:p-6 transition-colors duration-300">
+      <h2 className="md-title-m text-[var(--md-on-surface)] mb-3">💰 สรุปเวร &amp; เงินเวรเดือนนี้</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse" style={{ minWidth: '460px' }}>
+          <thead>
+            <tr className="md-label-m text-[var(--md-on-surface-var)] border-b border-gray-200 dark:border-gray-700">
+              <th className="text-left font-medium py-2 px-2">ชื่อ-นามสกุล</th>
+              <th className="text-center font-medium py-2 px-2">ตำแหน่ง</th>
+              <th className="text-center font-medium py-2 px-2">บ/ด</th>
+              <th className="text-center font-medium py-2 px-2">standby</th>
+              <th className="text-center font-medium py-2 px-2">แพทย์เวร</th>
+              <th className="text-right font-medium py-2 px-2">เงินเวร</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ m, c, pay }, i) => (
+              <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
+                <td className="py-2 px-2 text-[var(--md-on-surface)] whitespace-nowrap">{m.name}</td>
+                <td className="py-2 px-2 text-center text-[var(--md-on-surface-var)]">{ROLE_LABEL[m.role]}</td>
+                <td className="py-2 px-2 text-center font-medium text-[var(--md-on-surface)]">{c.OFF || '—'}</td>
+                <td className="py-2 px-2 text-center text-[var(--md-on-surface-var)]">{c.S || '—'}</td>
+                <td className="py-2 px-2 text-center text-[var(--md-on-surface-var)]">{c.M || '—'}</td>
+                <td className="py-2 px-2 text-right font-medium text-teal-700 dark:text-teal-300">{pay > 0 ? `฿${fmt(pay)}` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-300 dark:border-gray-600">
+              <td colSpan={5} className="py-2 px-2 text-right font-medium text-[var(--md-on-surface)]">รวมเงินเวรทั้งเดือน</td>
+              <td className="py-2 px-2 text-right font-bold text-teal-700 dark:text-teal-300">฿{fmt(total)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="md-label-s text-[var(--md-on-surface-var)] mt-3">
+        เงินเวร = จำนวน บ/ด × อัตรา (พยาบาล ฿1,200 · นักเทคโน ฿1,600 ต่อเวร · แพทย์ไม่คิด)
+      </p>
+    </div>
+  )
+}
+
 // ── Main Component ───────────────────────────────────────────────
 export default function ScheduleTable() {
   const _today = useMemo(() => new Date(), [])
@@ -393,8 +568,15 @@ export default function ScheduleTable() {
   const [editing,   setEditing]   = useState(false)
   const [showPin,   setShowPin]   = useState(false)
   const [dark,      setDark]      = useState(false)
+  const [meName,    setMeName]    = useState<string | null>(null)
   const [contentKey, setContentKey] = useState(0)
   const [slideDir,   setSlideDir]   = useState<'left' | 'right'>('left')
+
+  function setMe(name: string | null) {
+    setMeName(name)
+    if (name) localStorage.setItem(ME_KEY, name)
+    else localStorage.removeItem(ME_KEY)
+  }
 
   function switchView(v: 'today' | 'week' | 'month') {
     if (v !== 'month') {
@@ -416,6 +598,7 @@ export default function ScheduleTable() {
       const isDark = saved ? saved === 'dark' : prefersDark
       setDark(isDark)
       document.documentElement.classList.toggle('dark', isDark)
+      setMeName(localStorage.getItem(ME_KEY))
       setHydrated(true)
     })
     return () => { alive = false }
@@ -435,6 +618,16 @@ export default function ScheduleTable() {
     () => exists ? schedules[existingIdx] : createEmptyMonth(selMonth, selYear, template),
     [exists, existingIdx, schedules, selMonth, selYear, template],
   )
+
+  // รายชื่อทั้งหมด (unique) สำหรับ picker "เวรของฉัน"
+  const allNames = useMemo(() => {
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const m of schedules.flatMap(s => s.staff)) {
+      if (m.name && !seen.has(m.name)) { seen.add(m.name); out.push(m.name) }
+    }
+    return out
+  }, [schedules])
 
   // save เฉพาะตอนแก้ไขเอง (เรียกจาก updateCurrent) — ไม่ผูกกับทุกการเปลี่ยน
   // state เพื่อตัด feedback loop กับ realtime
@@ -479,6 +672,7 @@ export default function ScheduleTable() {
   const { department, totalDays, weekendDays, staff } = data
   const days = Array.from({ length: totalDays }, (_, i) => i + 1)
   const mobileStaff = editing ? staff : staff.filter(m => m.name)
+  const holidays = holidaysOf(data.month, data.year) // วันหยุดราชการ (auto)
 
   const calOffset = (new Date(data.year, data.month - 1, 1).getDay() + 6) % 7
   const calEndPad = (calOffset + totalDays) % 7 === 0 ? 0 : 7 - ((calOffset + totalDays) % 7)
@@ -623,6 +817,25 @@ export default function ScheduleTable() {
             </div>
           </div>
 
+          {/* เวรของฉัน — เลือกชื่อตัวเอง */}
+          <div className="flex justify-center items-center gap-2 mt-3">
+            <div className="relative inline-flex items-center">
+              <span className="absolute left-3 pointer-events-none text-sm">👤</span>
+              <select
+                value={meName ?? ''}
+                onChange={e => setMe(e.target.value || null)}
+                className={`md-label-m appearance-none h-9 pl-9 pr-8 rounded-full border bg-[var(--md-surface)] focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${meName ? 'border-teal-400 dark:border-teal-600 text-teal-700 dark:text-teal-300 font-medium' : 'border-gray-300 dark:border-gray-600 text-[var(--md-on-surface-var)]'}`}
+              >
+                <option value="">เลือกเวรของฉัน…</option>
+                {allNames.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <span className="absolute right-3 pointer-events-none text-[var(--md-on-surface-var)] text-xs">▾</span>
+            </div>
+            {meName && (
+              <button onClick={() => setMe(null)} title="ล้าง" className="md-state w-8 h-8 rounded-full grid place-items-center text-[var(--md-on-surface-var)] hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">✕</button>
+            )}
+          </div>
+
           {/* Month nav — month view only */}
           {view === 'month' && (
             <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
@@ -679,10 +892,10 @@ export default function ScheduleTable() {
         </div>
 
         {/* ── Today view ── */}
-        {view === 'today' && <TodayView schedules={schedules} />}
+        {view === 'today' && <TodayView schedules={schedules} meName={meName} />}
 
         {/* ── Week view ── */}
-        {view === 'week' && <WeekView schedules={schedules} />}
+        {view === 'week' && <WeekView schedules={schedules} meName={meName} />}
 
         {/* ── Month view (animates on month change) ── */}
         {view === 'month' && <div key={contentKey} className={slideClass}>
@@ -695,12 +908,14 @@ export default function ScheduleTable() {
                   <th className="border border-gray-600 px-2 py-2 text-center w-8 sticky left-0 z-20 bg-gray-800 dark:bg-gray-950 font-medium">ลำดับ</th>
                   <th className="border border-gray-600 px-3 py-2 text-left w-28 sticky left-8 z-20 bg-gray-800 dark:bg-gray-950 font-medium">ชื่อ-นามสกุล</th>
                   {days.map(d => {
-                    const isWeekend = weekendDays.includes(d)
+                    const holName = holidays[d]
+                    const isWeekend = weekendDays.includes(d) || !!holName
                     const dayAbbr = DAY_ABBR[new Date(data.year, data.month - 1, d).getDay()]
                     return (
                       <th
                         key={d}
                         onClick={editing ? () => toggleWeekend(d) : undefined}
+                        title={holName}
                         className={`border border-gray-600 w-7 py-1 text-center transition-colors ${isWeekend ? 'bg-red-800 dark:bg-red-950' : ''} ${editing ? 'cursor-pointer hover:bg-gray-700' : ''}`}
                       >
                         <div className="text-[8px] leading-none mb-0.5 opacity-70">{dayAbbr}</div>
@@ -725,11 +940,13 @@ export default function ScheduleTable() {
                       </tr>
                     )
                   }
-                  const bg = ROLE_BG[member.role]
+                  const isMe = !editing && !!meName && member.name === meName
+                  const bg = isMe ? 'bg-teal-100 dark:bg-teal-900' : ROLE_BG[member.role]
+                  const meEdge = isMe ? 'border-y-2 border-y-teal-500 dark:border-y-teal-400' : ''
                   return (
                     <tr key={rowIdx} className={`border-b dark:border-gray-700 ${editing ? '' : 'hover:brightness-95 dark:hover:brightness-110 transition-all duration-150'} ${bg}`}>
-                      <td className={`border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400 py-1.5 sticky left-0 z-10 ${bg}`}>{rowIdx + 1}</td>
-                      <td className={`border border-gray-200 dark:border-gray-700 px-1 py-1.5 sticky left-8 z-10 ${bg} ${editing ? '' : 'font-medium text-[var(--md-on-surface)] whitespace-nowrap'}`}>
+                      <td className={`border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400 py-1.5 sticky left-0 z-10 ${bg} ${meEdge} ${isMe ? 'border-l-4 border-l-teal-500 dark:border-l-teal-400 text-teal-700 dark:text-teal-200 font-bold' : ''}`}>{rowIdx + 1}</td>
+                      <td className={`border border-gray-200 dark:border-gray-700 px-1 py-1.5 sticky left-8 z-10 ${bg} ${meEdge} ${editing ? '' : `font-medium whitespace-nowrap ${isMe ? 'text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}`}>
                         {editing ? (
                           <div className="flex flex-col gap-0.5">
                             <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-xs bg-white dark:bg-gray-700 dark:text-gray-200" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(rowIdx, { name: e.target.value })} />
@@ -738,17 +955,22 @@ export default function ScheduleTable() {
                               {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                             </select>
                           </div>
-                        ) : member.phone ? (
-                          <a href={telHref(member.phone)} title={`โทร ${member.phone}`} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a>
-                        ) : member.name}
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            {member.phone ? (
+                              <a href={telHref(member.phone)} title={`โทร ${member.phone}`} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a>
+                            ) : member.name}
+                            {isMe && <span className="md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white shrink-0">ฉัน</span>}
+                          </span>
+                        )}
                       </td>
                       {member.shifts.map((shift, dayIdx) => {
-                        const isWeekend = weekendDays.includes(dayIdx + 1)
+                        const isWeekend = weekendDays.includes(dayIdx + 1) || !!holidays[dayIdx + 1]
                         return (
                           <td
                             key={dayIdx}
                             onClick={editing ? () => cycleCell(rowIdx, dayIdx) : undefined}
-                            className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${editing ? 'cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:bg-teal-100 dark:active:bg-teal-900/50' : ''}`}
+                            className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${editing ? 'cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:bg-teal-100 dark:active:bg-teal-900/50' : ''}`}
                           >
                             <span className={SHIFT_STYLE[shift]} title={SHIFT_LABELS[shift]}>
                               {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
@@ -824,13 +1046,15 @@ export default function ScheduleTable() {
                         const day = dayIdx + 1
                         const colIdx = (calOffset + dayIdx) % 7
                         const isWeekendCol = colIdx >= 5
-                        const isHoliday = weekendDays.includes(day) && !isWeekendCol
+                        const holName = holidays[day]
+                        const isHoliday = (weekendDays.includes(day) || !!holName) && !isWeekendCol
                         const isRed = isWeekendCol || isHoliday
                         return (
                           <div
                             key={dayIdx}
                             onMouseDown={editing ? addRipple : undefined}
                             onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
+                            title={holName}
                             className={`md-state flex flex-col items-center justify-between rounded-2xl border py-2 min-h-[56px] transition-all duration-150 ${
                               isRed
                                 ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/60'
@@ -859,6 +1083,8 @@ export default function ScheduleTable() {
               </div>
             )}
           </div>
+
+          {!editing && <MonthSummary data={data} />}
 
         </div>}{/* end month view */}
 
