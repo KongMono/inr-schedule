@@ -46,8 +46,6 @@ const ROLE_LABEL: Record<string, string> = {
 const ROLES: StaffMember['role'][] = ['doctor', 'nurse', 'tech']
 
 function telHref(phone: string) { return `tel:${phone.replace(/[^0-9+]/g, '')}` }
-function countWork(m: StaffMember)  { return m.shifts.filter(s => s === 'OFF').length }
-function countNight(m: StaffMember) { return m.shifts.filter(s => s === 'N' || s === 'N2').length }
 function byDate(a: ScheduleData, b: ScheduleData) {
   return a.thaiYear - b.thaiYear || a.month - b.month
 }
@@ -466,9 +464,6 @@ export default function ScheduleTable() {
                       </th>
                     )
                   })}
-                  <th className="border border-gray-600 px-1 py-2 text-center w-8 font-medium">ทำ</th>
-                  <th className="border border-gray-600 px-1 py-2 text-center w-8 font-medium">OT</th>
-                  <th className="border border-gray-600 px-1 py-2 text-center w-8 font-medium">เวร</th>
                   {editing && <th className="border border-gray-600 px-1 py-2 text-center w-8"></th>}
                 </tr>
               </thead>
@@ -515,9 +510,6 @@ export default function ScheduleTable() {
                           </td>
                         )
                       })}
-                      <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-[var(--md-on-surface)] py-1.5">{countWork(member) > 0 ? countWork(member) : ''}</td>
-                      <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-teal-600 dark:text-teal-400 py-1.5">{member.totalOT ?? ''}</td>
-                      <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-purple-600 dark:text-purple-400 py-1.5">{countNight(member) > 0 ? countNight(member) : ''}</td>
                       {editing && (
                         <td className="border border-gray-200 dark:border-gray-700 text-center">
                           <button onClick={() => removeStaff(rowIdx)} className="text-red-500 dark:text-red-400 text-xs px-1 hover:text-red-700 transition-colors">✕</button>
@@ -569,11 +561,6 @@ export default function ScheduleTable() {
                         <span className="md-label-m px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 shrink-0">{ROLE_LABEL[member.role]}</span>
                       </div>
                     )}
-                    <div className="flex gap-3 shrink-0 ml-2">
-                      <span className="md-body-s text-[var(--md-on-surface-var)]">ทำ <strong className="text-[var(--md-on-surface)]">{member.totalWork ?? (countWork(member) || '-')}</strong></span>
-                      <span className="md-body-s text-teal-500 dark:text-teal-400">OT <strong>{member.totalOT ?? '-'}</strong></span>
-                      <span className="md-body-s text-purple-500 dark:text-purple-400">เวร <strong>{member.totalNight ?? (countNight(member) || '-')}</strong></span>
-                    </div>
                   </div>
 
                   {/* Calendar grid — 16dp padding, 8dp gap */}
