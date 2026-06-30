@@ -40,6 +40,7 @@ export function createEmptyMonth(
   const staff: StaffMember[] = (template?.staff ?? []).map((m) => ({
     id: m.id,
     name: m.name,
+    phone: m.phone,
     role: m.role,
     shifts: Array(totalDays).fill('-') as ShiftCode[],
   }))

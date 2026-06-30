@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   SHIFT_LABELS,
   THAI_MONTHS,
@@ -44,7 +45,8 @@ const ROLE_LABEL: Record<string, string> = {
 
 const ROLES: StaffMember['role'][] = ['doctor', 'nurse', 'tech']
 
-function countWork(m: StaffMember)  { return m.shifts.filter(s => s === 'M' || s === 'A').length }
+function telHref(phone: string) { return `tel:${phone.replace(/[^0-9+]/g, '')}` }
+function countWork(m: StaffMember)  { return m.shifts.filter(s => s === 'OFF').length }
 function countNight(m: StaffMember) { return m.shifts.filter(s => s === 'N' || s === 'N2').length }
 function byDate(a: ScheduleData, b: ScheduleData) {
   return a.thaiYear - b.thaiYear || a.month - b.month
@@ -327,6 +329,17 @@ export default function ScheduleTable() {
         {/* ── MD3 Top App Bar ── */}
         <div className="relative bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-6 sm:px-6 sm:py-7 transition-colors duration-300">
 
+          {/* Contact page link — absolute, left */}
+          <div className="absolute top-4 left-4 z-10">
+            <Link
+              href="/contact"
+              title="ข้อมูลติดต่อ"
+              className="md-state md-label-l inline-flex items-center gap-1 h-10 px-4 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 transition-all duration-200 active:scale-95"
+            >
+              📞 ติดต่อ
+            </Link>
+          </div>
+
           {/* Dark mode toggle — absolute so it doesn't affect centering */}
           <div className="absolute top-4 right-4 z-10">
             <ThemeSwitch dark={dark} onToggle={toggleDark} />
@@ -458,10 +471,13 @@ export default function ScheduleTable() {
                         {editing ? (
                           <div className="flex flex-col gap-0.5">
                             <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-xs bg-white dark:bg-gray-700 dark:text-gray-200" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(rowIdx, { name: e.target.value })} />
+                            <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] bg-white dark:bg-gray-700 dark:text-gray-200" value={member.phone ?? ''} placeholder="เบอร์โทร" onChange={e => patchStaff(rowIdx, { phone: e.target.value || undefined })} />
                             <select className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700" value={member.role} onChange={e => patchStaff(rowIdx, { role: e.target.value as StaffMember['role'] })}>
                               {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                             </select>
                           </div>
+                        ) : member.phone ? (
+                          <a href={telHref(member.phone)} title={`โทร ${member.phone}`} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a>
                         ) : member.name}
                       </td>
                       {member.shifts.map((shift, dayIdx) => {
@@ -524,8 +540,9 @@ export default function ScheduleTable() {
                   {/* Card header — 16dp padding */}
                   <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-700/60">
                     {editing ? (
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 min-w-0">
                         <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
+                        <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.phone ?? ''} placeholder="เบอร์โทร" inputMode="tel" onChange={e => patchStaff(realIdx, { phone: e.target.value || undefined })} />
                         <select className="md-label-m border dark:border-gray-600 rounded-xl px-2 py-1.5 text-gray-500 dark:text-gray-400 bg-[var(--md-surface-variant)]" value={member.role} onChange={e => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
                           {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                         </select>
@@ -533,7 +550,14 @@ export default function ScheduleTable() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="md-title-m text-[var(--md-on-surface)] truncate">{member.name}</span>
+                        {member.phone ? (
+                          <a href={telHref(member.phone)} className="md-title-m text-teal-700 dark:text-teal-300 truncate flex items-center gap-1" title={`โทร ${member.phone}`}>
+                            <span className="truncate">{member.name}</span>
+                            <span className="text-sm shrink-0">📞</span>
+                          </a>
+                        ) : (
+                          <span className="md-title-m text-[var(--md-on-surface)] truncate">{member.name}</span>
+                        )}
                         <span className="md-label-m px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 shrink-0">{ROLE_LABEL[member.role]}</span>
                       </div>
                     )}

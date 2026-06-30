@@ -10,6 +10,7 @@ export type ShiftCode =
 export interface StaffMember {
   id: number | null
   name: string
+  phone?: string
   role: 'doctor' | 'nurse' | 'tech'
   shifts: ShiftCode[]
   totalWork?: number
@@ -40,7 +41,8 @@ const july2569: ScheduleData = {
   staff: [
     {
       id: null,
-      name: 'พ.เกรียงไกร',
+      name: 'นพ.เกรียงไกร ภู่พิทยา',
+      phone: '094-456-2236',
       role: 'doctor',
       shifts: [
         'M','M','M','A','A','M','M','M','M','M',  // 1-10
@@ -48,11 +50,11 @@ const july2569: ScheduleData = {
         'M','M','A','A','A','A','A','A','A','-',  // 21-29,30
         '-',                                       // 31
       ],
-      totalWork: 16,
     },
     {
       id: null,
-      name: 'พ.จุนซู จิน',
+      name: 'นพ.จุน ซู จิน',
+      phone: '086-565-2001',
       role: 'doctor',
       shifts: [
         'M','M','M','M','M','M','M','M','A','A',  // 1-10
@@ -63,7 +65,8 @@ const july2569: ScheduleData = {
     },
     {
       id: 1,
-      name: 'นงนภัส',
+      name: 'นงนภัส อ่อนละออ',
+      phone: '081-929-7628',
       role: 'nurse',
       shifts: [
         'OFF','N','A','N','-','-','M','A','A','OFF', // 1-10
@@ -71,13 +74,12 @@ const july2569: ScheduleData = {
         'N','-','N','-','-','-','-','-','-','-',    // 21-30
         '-',                                          // 31
       ],
-      totalWork: 3,
       totalOT: 7,
-      totalNight: 6,
     },
     {
       id: 2,
-      name: 'ณรัณรญาณ์',
+      name: 'ณรัณรญาณ์ ณรัณวรานนทน์',
+      phone: '086-414-1760',
       role: 'nurse',
       shifts: [
         'N','OFF','A','A','N','N','OFF','A','N','N', // 1-10
@@ -85,13 +87,12 @@ const july2569: ScheduleData = {
         'N','-','-','N','-','-','-','-','N','-',    // 21-30
         '-',                                          // 31
       ],
-      totalWork: 4,
       totalOT: 7,
-      totalNight: 8,
     },
     {
       id: 3,
-      name: 'ชลนิชา',
+      name: 'ชลนิชา สกุลรัตน์',
+      phone: '064-146-6326',
       role: 'nurse',
       shifts: [
         '-','-','OFF','A','A','N','N','OFF','-','-', // 1-10
@@ -99,13 +100,12 @@ const july2569: ScheduleData = {
         'N','OFF','A','A','N','N','-','-','-','-',  // 21-30
         'N',                                          // 31
       ],
-      totalWork: 4,
       totalOT: 7,
-      totalNight: 8,
     },
     {
       id: 4,
-      name: 'นรารัตน์',
+      name: 'นรารัตน์ สว่างใหญ่',
+      phone: '095-660-5256',
       role: 'nurse',
       shifts: [
         'N','-','N','A','OFF','N','N','-','-','A',  // 1-10
@@ -113,13 +113,12 @@ const july2569: ScheduleData = {
         'A','N','A','A','A','A','A','A','A','A',    // 21-30
         'OFF',                                        // 31
       ],
-      totalWork: 4,
       totalOT: 7,
-      totalNight: 8,
     },
     {
       id: 5,
-      name: 'ธนัชชา',
+      name: 'ธนัชชา คงนวล',
+      phone: '095-707-8903',
       role: 'nurse',
       shifts: [
         '-','N','N','A','A','OFF','-','N','N','-',  // 1-10
@@ -127,13 +126,12 @@ const july2569: ScheduleData = {
         'N','-','A','A','A','A','A','A','A','A',    // 21-30
         'N',                                          // 31
       ],
-      totalWork: 3,
       totalOT: 7,
-      totalNight: 6,
     },
     {
       id: 6,
-      name: 'วุฒิพงษ์',
+      name: 'วุฒิพงษ์ น้อยบางยาง',
+      phone: '081-167-4347',
       role: 'tech',
       shifts: [
         '-','M','M','A','A','M','M','-','M','M',    // 1-10
@@ -144,19 +142,22 @@ const july2569: ScheduleData = {
     },
     {
       id: 7,
-      name: '',
-      role: 'nurse',
+      name: 'พงศธร ลลิตาภรพงษ์',
+      phone: '065-835-4062',
+      role: 'tech',
       shifts: Array(31).fill('-'),
     },
     {
       id: 8,
-      name: 'โสภิต',
+      name: 'โสภิต ยี่อิน',
+      phone: '093-332-8338',
       role: 'nurse',
       shifts: Array(31).fill('-'),
     },
     {
       id: 9,
-      name: 'นีรนุช',
+      name: 'ณีรนุช เลิศบันลือศักดิ์',
+      phone: '088-099-9318',
       role: 'nurse',
       shifts: Array(31).fill('-'),
     },

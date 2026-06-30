@@ -10,17 +10,38 @@ function sortByDate(a: ScheduleData, b: ScheduleData) {
   return a.year - b.year || a.month - b.month
 }
 
+// ชื่อ/นามสกุล/เบอร์/role เป็นข้อมูล reference — sync จาก seed ตาม index
+// ทับลงทุกเดือนที่โหลดมา (เก็บ shifts/ยอดที่แก้ไว้)
+const seedIdentity = (seedSchedules[0]?.staff ?? []).map((s) => ({
+  name: s.name,
+  phone: s.phone,
+  role: s.role,
+}))
+
+function syncIdentity(list: ScheduleData[]): ScheduleData[] {
+  return list.map((m) => ({
+    ...m,
+    staff: m.staff.map((s, i) => ({
+      ...s,
+      ...(seedIdentity[i] ?? {}),
+      // ทำ (บ/ด) + เวร (standby) นับอัตโนมัติ — ล้างค่าที่ cache ไว้
+      totalWork: undefined,
+      totalNight: undefined,
+    })),
+  }))
+}
+
 // แถวใน Supabase: { month, thai_year, data jsonb }
 function rowToData(row: { data: ScheduleData }): ScheduleData {
   return row.data
 }
 
 export async function fetchSchedules(): Promise<ScheduleData[]> {
-  if (!supabase) return loadSchedules()
+  if (!supabase) return syncIdentity(loadSchedules())
   const { data, error } = await supabase.from(TABLE).select('data').order('thai_year').order('month')
   if (error) {
     console.error('[schedule] fetch error:', error.message)
-    return loadSchedules()
+    return syncIdentity(loadSchedules())
   }
   const rows = (data ?? []).map(rowToData).sort(sortByDate)
   if (rows.length === 0) {
@@ -28,7 +49,7 @@ export async function fetchSchedules(): Promise<ScheduleData[]> {
     await Promise.all(seedSchedules.map(saveMonth))
     return [...seedSchedules].sort(sortByDate)
   }
-  return rows
+  return syncIdentity(rows)
 }
 
 export async function saveMonth(m: ScheduleData): Promise<void> {
