@@ -181,9 +181,35 @@ function Legend() {
   )
 }
 
-// ── Today View ───────────────────────────────────────────────────
+// ── Shared shift helpers (Today / Week views) ────────────────────
 const THAI_DAY_FULL = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์']
+const WORKING: ShiftCode[] = ['M', 'N', 'N2', 'OFF', 'SWAP']
+const isWorking = (s: ShiftCode) => WORKING.includes(s)
 
+// กลุ่มเวรที่ "ทำงานวันนี้" เรียงตามความสำคัญ
+const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolean; dot: string; accent: string }[] = [
+  { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-500',   accent: 'border-l-blue-400 dark:border-l-blue-500' },
+  { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-500', accent: 'border-l-purple-400 dark:border-l-purple-500' },
+  { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-gray-400',   accent: 'border-l-gray-400 dark:border-l-gray-500' },
+  { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-500', accent: 'border-l-orange-400 dark:border-l-orange-500' },
+]
+
+// การ์ดชื่อคน — ชื่อ + ตำแหน่ง + ปุ่มโทร, มีแถบสีกลุ่มด้านซ้าย
+function PersonCard({ m, accent }: { m: StaffMember; accent: string }) {
+  return (
+    <div className={`flex items-center justify-between gap-2 pl-3 pr-2 py-2.5 rounded-xl border border-l-4 border-gray-100 dark:border-gray-700/50 bg-[var(--md-surface)] ${accent}`}>
+      <div className="min-w-0">
+        <p className="md-body-m font-medium text-[var(--md-on-surface)] truncate">{m.name}</p>
+        <p className="md-label-s text-[var(--md-on-surface-var)]">{ROLE_LABEL[m.role]}</p>
+      </div>
+      {m.phone && (
+        <a href={telHref(m.phone)} title={`โทร ${m.phone}`} className="shrink-0 grid place-items-center w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 text-sm active:scale-90 transition-transform">📞</a>
+      )}
+    </div>
+  )
+}
+
+// ── Today View — "who's on duty" board ───────────────────────────
 function TodayView({ schedules }: { schedules: ScheduleData[] }) {
   const today = new Date()
   const month = today.getMonth() + 1
@@ -192,68 +218,65 @@ function TodayView({ schedules }: { schedules: ScheduleData[] }) {
   const data = schedules.find(m => m.month === month && m.thaiYear === thaiYear)
   const isHoliday = data ? data.weekendDays.includes(today.getDate()) : (today.getDay() === 0 || today.getDay() === 6)
 
-  if (!data) return (
-    <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl p-8 text-center text-[var(--md-on-surface-var)]">
-      ไม่มีข้อมูลเดือนนี้
-    </div>
-  )
+  const named = data?.staff.filter(m => m.name) ?? []
+  const shiftOf = (m: StaffMember): ShiftCode => m.shifts[dayIdx] ?? '-'
+  const offToday = named.filter(m => !isWorking(shiftOf(m)))
+  const anyWorking = named.some(m => isWorking(shiftOf(m)))
 
   return (
-    <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl p-4 sm:p-6 space-y-5">
-      {/* Date header */}
-      <div className={`rounded-2xl px-5 py-4 text-center ${isHoliday ? 'bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50' : 'bg-teal-50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/50'}`}>
-        <p className={`md-headline-s font-medium ${isHoliday ? 'text-red-600 dark:text-red-400' : 'text-teal-700 dark:text-teal-300'}`}>
-          {today.getDate()} {THAI_MONTHS[month]} {thaiYear}
-        </p>
-        <p className={`md-body-m mt-1 ${isHoliday ? 'text-red-500 dark:text-red-400' : 'text-[var(--md-on-surface-var)]'}`}>
+    <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl p-4 sm:p-6 space-y-4">
+      {/* Date hero */}
+      <div className={`rounded-2xl px-5 py-5 text-center ${isHoliday ? 'bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50' : 'bg-teal-50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/50'}`}>
+        <p className={`md-label-l ${isHoliday ? 'text-red-500 dark:text-red-400' : 'text-teal-600 dark:text-teal-400'}`}>
           วัน{THAI_DAY_FULL[today.getDay()]}{isHoliday ? ' · วันหยุด' : ''}
+        </p>
+        <p className={`md-headline-m font-medium mt-0.5 ${isHoliday ? 'text-red-600 dark:text-red-400' : 'text-teal-700 dark:text-teal-300'}`}>
+          {today.getDate()} {THAI_MONTHS[month]} {thaiYear}
         </p>
       </div>
 
-      {/* Staff by role */}
-      {ROLES.map(role => {
-        const members = data.staff.filter(m => m.name && m.role === role)
-        if (!members.length) return null
-        return (
-          <div key={role}>
-            <p className="md-label-l text-[var(--md-on-surface-var)] mb-2">{ROLE_LABEL[role]}</p>
-            <div className="space-y-2">
-              {members.map((m, i) => {
-                const shift: ShiftCode = m.shifts[dayIdx] ?? '-'
-                const dimmed = shift === '-' || shift === 'A'
-                return (
-                  <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-2xl border transition-colors ${dimmed ? 'opacity-50 border-gray-100 dark:border-gray-700/30 bg-gray-50/40 dark:bg-gray-800/20' : 'border-gray-100 dark:border-gray-700/50 bg-[var(--md-surface-variant)]/50'}`}>
-                    <div className="min-w-0">
-                      {m.phone ? (
-                        <a href={telHref(m.phone)} className="md-body-l text-teal-700 dark:text-teal-300 font-medium flex items-center gap-1">
-                          <span className="truncate">{m.name}</span><span className="text-sm shrink-0">📞</span>
-                        </a>
-                      ) : (
-                        <span className="md-body-l text-[var(--md-on-surface)] font-medium">{m.name}</span>
-                      )}
-                    </div>
-                    <span className={`md-label-l shrink-0 ml-3 px-3 py-1.5 rounded-full font-medium ${
-                      shift === 'M'                   ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400' :
-                      shift === 'A'                   ? 'bg-red-50 dark:bg-red-950/50 text-red-500 dark:text-red-400' :
-                      shift === 'N' || shift === 'N2' ? 'bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400' :
-                      shift === 'OFF'                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' :
-                      shift === 'SWAP'                ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-500 dark:text-orange-400' :
-                                                        'text-gray-300 dark:text-gray-600'
-                    }`}>
-                      {shift === '-' ? '—' : `${SHIFT_DISPLAY[shift]} ${SHIFT_LABELS[shift]}`}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
+      {!data ? (
+        <p className="text-center text-[var(--md-on-surface-var)] py-6">ไม่มีข้อมูลเดือนนี้</p>
+      ) : !anyWorking ? (
+        <p className="text-center text-[var(--md-on-surface-var)] py-6">ยังไม่มีเวรวันนี้</p>
+      ) : (
+        DUTY_GROUPS.map(g => {
+          const people = named.filter(m => g.match(shiftOf(m)))
+          if (!people.length) return null
+          return (
+            <section key={g.label} className="anim-fade-up">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className={`grid place-items-center w-7 h-7 rounded-full text-white text-xs font-bold shrink-0 ${g.dot}`}>{g.sym}</span>
+                <span className="md-title-s text-[var(--md-on-surface)]">{g.label}</span>
+                <span className="md-label-m px-2 py-0.5 rounded-full bg-[var(--md-surface-variant)] text-[var(--md-on-surface-var)]">{people.length}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {people.map((m, i) => <PersonCard key={i} m={m} accent={g.accent} />)}
+              </div>
+            </section>
+          )
+        })
+      )}
+
+      {/* Off today — muted chips */}
+      {data && offToday.length > 0 && (
+        <details className="group">
+          <summary className="md-label-m text-[var(--md-on-surface-var)] cursor-pointer select-none list-none flex items-center gap-1 pt-1">
+            <span className="transition-transform group-open:rotate-90">›</span>
+            ไม่อยู่เวรวันนี้ ({offToday.length})
+          </summary>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {offToday.map((m, i) => (
+              <span key={i} className="md-label-s px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500">{m.name}</span>
+            ))}
           </div>
-        )
-      })}
+        </details>
+      )}
     </div>
   )
 }
 
-// ── Week View ─────────────────────────────────────────────────────
+// ── Week View — matrix (desktop) + day cards (mobile) ────────────
 function WeekView({ schedules }: { schedules: ScheduleData[] }) {
   const today = new Date()
   const monday = new Date(today)
@@ -275,41 +298,84 @@ function WeekView({ schedules }: { schedules: ScheduleData[] }) {
   })
 
   return (
-    <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl overflow-x-auto">
-      <table className="text-xs border-collapse w-full" style={{ minWidth: '400px' }}>
-        <thead>
-          <tr className="bg-gray-800 dark:bg-gray-950 text-white">
-            <th className="border border-gray-600 px-2 py-2 text-left sticky left-0 z-20 bg-gray-800 dark:bg-gray-950 w-28 font-medium">ชื่อ-นามสกุล</th>
-            {cols.map(({ d, isToday, isWeekend }) => (
-              <th key={d.toISOString()} className={`border border-gray-600 w-12 py-1 text-center ${isToday ? 'bg-teal-700 dark:bg-teal-800' : isWeekend ? 'bg-red-800 dark:bg-red-950' : ''}`}>
-                <div className="text-[8px] leading-none mb-0.5 opacity-70">{DAY_ABBR[d.getDay()]}</div>
-                <div className={isToday ? 'rounded-full border-2 border-white/80 w-5 h-5 flex items-center justify-center mx-auto' : ''}>{d.getDate()}</div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((member, rowIdx) => {
-            const bg = ROLE_BG[member.role]
-            return (
-              <tr key={rowIdx} className={`border-b dark:border-gray-700 ${bg}`}>
-                <td className={`border border-gray-200 dark:border-gray-700 px-2 py-1.5 sticky left-0 z-10 font-medium text-[var(--md-on-surface)] whitespace-nowrap ${bg}`}>
-                  {member.phone ? <a href={telHref(member.phone)} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a> : member.name}
-                </td>
-                {cols.map(({ d, dd, isWeekend, isToday }) => {
-                  const staffInDay = dd?.staff[rowIdx]
-                  const shift: ShiftCode = staffInDay?.shifts[d.getDate() - 1] ?? '-'
-                  return (
-                    <td key={d.toISOString()} className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 ${isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${isToday ? 'ring-1 ring-inset ring-teal-400 dark:ring-teal-600' : ''}`}>
-                      <span className={SHIFT_STYLE[shift]}>{SHIFT_DISPLAY[shift]}</span>
-                    </td>
-                  )
-                })}
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl">
+      {/* Desktop matrix */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="text-xs border-collapse w-full" style={{ minWidth: '400px' }}>
+          <thead>
+            <tr className="bg-gray-800 dark:bg-gray-950 text-white">
+              <th className="border border-gray-600 px-2 py-2 text-left sticky left-0 z-20 bg-gray-800 dark:bg-gray-950 w-28 font-medium">ชื่อ-นามสกุล</th>
+              {cols.map(({ d, isToday, isWeekend }) => (
+                <th key={d.toISOString()} className={`border border-gray-600 w-12 py-1 text-center ${isToday ? 'bg-teal-700 dark:bg-teal-800' : isWeekend ? 'bg-red-800 dark:bg-red-950' : ''}`}>
+                  <div className="text-[8px] leading-none mb-0.5 opacity-70">{DAY_ABBR[d.getDay()]}</div>
+                  <div className={isToday ? 'rounded-full border-2 border-white/80 w-5 h-5 flex items-center justify-center mx-auto' : ''}>{d.getDate()}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((member, rowIdx) => {
+              const bg = ROLE_BG[member.role]
+              return (
+                <tr key={rowIdx} className={`border-b dark:border-gray-700 ${bg}`}>
+                  <td className={`border border-gray-200 dark:border-gray-700 px-2 py-1.5 sticky left-0 z-10 font-medium text-[var(--md-on-surface)] whitespace-nowrap ${bg}`}>
+                    {member.phone ? <a href={telHref(member.phone)} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a> : member.name}
+                  </td>
+                  {cols.map(({ d, dd, isWeekend, isToday }) => {
+                    const staffInDay = dd?.staff[rowIdx]
+                    const shift: ShiftCode = staffInDay?.shifts[d.getDate() - 1] ?? '-'
+                    return (
+                      <td key={d.toISOString()} className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 ${isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${isToday ? 'ring-1 ring-inset ring-teal-400 dark:ring-teal-600' : ''}`}>
+                        <span className={SHIFT_STYLE[shift]}>{SHIFT_DISPLAY[shift]}</span>
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile day cards */}
+      <div className="md:hidden p-3 space-y-3">
+        {cols.map(({ d, dd, isToday, isWeekend }, ci) => {
+          const dayStaff = dd?.staff.filter(m => m.name && isWorking(m.shifts[d.getDate() - 1] ?? '-')) ?? []
+          return (
+            <div
+              key={d.toISOString()}
+              className={`anim-fade-up rounded-2xl border ${isToday ? 'border-teal-300 dark:border-teal-700 ring-1 ring-teal-300 dark:ring-teal-700' : 'border-gray-100 dark:border-gray-700/50'}`}
+              style={{ animationDelay: `${ci * 45}ms` }}
+            >
+              <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 rounded-t-2xl shadow-sm backdrop-blur ${isToday ? 'bg-teal-100/90 dark:bg-teal-950/85' : isWeekend ? 'bg-red-100/90 dark:bg-red-950/80' : 'bg-[var(--md-surface-variant)]'}`}>
+                <span className={`md-title-s ${isToday ? 'text-teal-700 dark:text-teal-300' : isWeekend ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>
+                  {THAI_DAY_FULL[d.getDay()]} {d.getDate()} {THAI_MONTHS[d.getMonth() + 1]} {d.getFullYear() + 543}
+                </span>
+                {isToday && <span className="md-label-s px-2 py-0.5 rounded-full bg-teal-600 text-white">วันนี้</span>}
+              </div>
+              <div className="px-4 py-3">
+                {dayStaff.length === 0 ? (
+                  <p className="md-body-s text-[var(--md-on-surface-var)]">— ไม่มีเวร</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {dayStaff.map((m, i) => {
+                      const shift: ShiftCode = m.shifts[d.getDate() - 1] ?? '-'
+                      return (
+                        <div key={i} className="flex items-center justify-between gap-2">
+                          <span className="md-body-m text-[var(--md-on-surface)] truncate">{m.name}</span>
+                          <span className={`md-label-s shrink-0 px-2 py-0.5 rounded-full ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
+                            {SHIFT_DISPLAY[shift]} {SHIFT_LABELS[shift]}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -329,7 +395,12 @@ export default function ScheduleTable() {
   const [slideDir,   setSlideDir]   = useState<'left' | 'right'>('left')
 
   function switchView(v: 'today' | 'week' | 'month') {
-    if (v !== 'month') { setEditing(false); sessionStorage.removeItem(EDIT_KEY) }
+    if (v !== 'month') {
+      setEditing(false); sessionStorage.removeItem(EDIT_KEY)
+      // กลับมาเดือนปัจจุบันให้ตรงกับสิ่งที่ today/week แสดง
+      const now = new Date()
+      setSelMonth(now.getMonth() + 1); setSelYear(now.getFullYear() + 543)
+    }
     setView(v)
   }
 
@@ -481,7 +552,7 @@ export default function ScheduleTable() {
 
   return (
     <div className="min-h-screen bg-[var(--md-background)] transition-colors duration-300 p-2 sm:p-4">
-      <div className="max-w-full">
+      <div className="max-w-4xl mx-auto">
 
         {/* ── MD3 Top App Bar ── */}
         <div className="relative bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-6 sm:px-6 sm:py-7 transition-colors duration-300">
@@ -508,30 +579,41 @@ export default function ScheduleTable() {
               <span className="grid place-items-center w-9 h-9 rounded-full bg-[var(--md-primary-container)] text-teal-700 dark:text-teal-200 text-lg shadow-sm">🩻</span>
               <span className="md-title-m sm:md-title-l tracking-wide text-teal-700 dark:text-teal-300 font-semibold">ศูนย์รังสี</span>
             </div>
-            <p className="anim-header-2 md-body-m text-[var(--md-on-surface-var)]">ตารางเวร ประจำเดือน</p>
-            <h1 key={`${selMonth}-${selYear}`} className="anim-pop md-headline-s sm:md-headline-m text-teal-700 dark:text-teal-400 mt-2">
-              {THAI_MONTHS[selMonth]} {selYear}
-            </h1>
-            {editing ? (
-              <input
-                className="anim-header-3 mt-2 md-body-m text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-teal-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
-                value={department}
-                onChange={e => updateCurrent(m => ({ ...m, department: e.target.value }))}
-              />
+            {view === 'month' ? (
+              <>
+                <p className="anim-header-2 md-body-m text-[var(--md-on-surface-var)]">ตารางเวร ประจำเดือน</p>
+                <h1 key={`${selMonth}-${selYear}`} className="anim-pop md-headline-s sm:md-headline-m text-teal-700 dark:text-teal-400 mt-2">
+                  {THAI_MONTHS[selMonth]} {selYear}
+                </h1>
+                {editing ? (
+                  <input
+                    className="anim-header-3 mt-2 md-body-m text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-teal-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
+                    value={department}
+                    onChange={e => updateCurrent(m => ({ ...m, department: e.target.value }))}
+                  />
+                ) : (
+                  <p className="anim-header-3 md-body-m text-[var(--md-on-surface-var)] mt-2">{department}</p>
+                )}
+              </>
             ) : (
-              <p className="anim-header-3 md-body-m text-[var(--md-on-surface-var)] mt-2">{department}</p>
+              <>
+                <h1 key={view} className="anim-pop md-headline-s sm:md-headline-m text-teal-700 dark:text-teal-400">
+                  ตารางเวร{view === 'today' ? 'วันนี้' : 'สัปดาห์นี้'}
+                </h1>
+                <p className="anim-header-3 md-body-m text-[var(--md-on-surface-var)] mt-2">{department}</p>
+              </>
             )}
           </div>
 
-          {/* View tabs */}
+          {/* View tabs — segmented control */}
           <div className="anim-header-4 flex justify-center mt-5">
-            <div className="flex rounded-full border border-gray-200 dark:border-gray-700 overflow-hidden">
-              {([['today', 'วันนี้'], ['week', 'สัปดาห์'], ['month', 'เดือน']] as const).map(([v, label]) => (
+            <div className="flex w-full max-w-sm gap-1 p-1 rounded-full bg-[var(--md-surface-variant)] dark:bg-gray-800">
+              {([['today', 'วันนี้'], ['week', 'สัปดาห์นี้'], ['month', 'เดือนนี้']] as const).map(([v, label]) => (
                 <button
                   key={v}
                   style={{ touchAction: 'manipulation' }}
                   onClick={() => switchView(v)}
-                  className={`md-label-m px-5 py-2 transition-colors duration-200 ${view === v ? 'bg-teal-600 dark:bg-teal-700 text-white' : 'text-[var(--md-on-surface-var)] hover:bg-gray-100 dark:hover:bg-gray-700/60'}`}
+                  className={`md-label-l flex-1 py-2.5 rounded-full transition-all duration-200 active:scale-95 ${view === v ? 'bg-teal-600 dark:bg-teal-700 text-white shadow-sm' : 'text-[var(--md-on-surface-var)]'}`}
                 >
                   {label}
                 </button>
@@ -591,7 +673,7 @@ export default function ScheduleTable() {
             </p>
           )}
 
-          <Legend />
+          {view !== 'today' && <Legend />}
         </div>
 
         {/* ── Today view ── */}
