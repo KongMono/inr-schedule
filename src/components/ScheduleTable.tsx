@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   SHIFT_LABELS,
@@ -416,39 +416,54 @@ function WeekView({ schedules, meName }: { schedules: ScheduleData[]; meName: st
     <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl">
       {/* Desktop matrix */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="text-xs border-collapse w-full" style={{ minWidth: '400px' }}>
+        <table className="text-sm border-collapse w-full" style={{ minWidth: '480px' }}>
           <thead>
             <tr className="bg-gray-800 dark:bg-gray-950 text-white">
               <th className="border border-gray-600 px-2 py-2 text-left sticky left-0 z-20 bg-gray-800 dark:bg-gray-950 w-28 font-medium">ชื่อ-นามสกุล</th>
               {cols.map(({ d, isToday, isWeekend, holName }) => (
                 <th key={d.toISOString()} title={holName} className={`border border-gray-600 w-12 py-1 text-center ${isToday ? 'bg-teal-700 dark:bg-teal-800' : isWeekend ? 'bg-red-800 dark:bg-red-950' : ''}`}>
-                  <div className="text-[8px] leading-none mb-0.5 opacity-70">{DAY_ABBR[d.getDay()]}</div>
-                  <div className={isToday ? 'rounded-full border-2 border-white/80 w-5 h-5 flex items-center justify-center mx-auto' : ''}>{d.getDate()}</div>
+                  <div className="md-label-s leading-none mb-0.5 opacity-70">{DAY_ABBR[d.getDay()]}</div>
+                  <div className={isToday ? 'rounded-full border-2 border-white/80 w-6 h-6 flex items-center justify-center mx-auto' : ''}>{d.getDate()}</div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {members.map((member, rowIdx) => {
-              const isMe = !!meName && member.name === meName
-              const bg = isMe ? 'bg-teal-100 dark:bg-teal-900' : ROLE_BG[member.role]
-              const meEdge = isMe ? 'border-y-2 border-y-teal-500 dark:border-y-teal-400' : ''
+            {ROLES.map(role => {
+              const rows = members.filter(m => m.role === role)
+              if (!rows.length) return null
               return (
-                <tr key={rowIdx} className={`border-b dark:border-gray-700 ${bg}`}>
-                  <td className={`border border-gray-200 dark:border-gray-700 px-2 py-1.5 sticky left-0 z-10 font-medium whitespace-nowrap ${bg} ${meEdge} ${isMe ? 'border-l-4 border-l-teal-500 dark:border-l-teal-400 text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}>
-                    {member.phone ? <a href={telHref(member.phone)} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a> : member.name}
-                    {isMe && <span className="ml-1 md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white">ฉัน</span>}
-                  </td>
-                  {cols.map(({ d, dd, isWeekend, isToday }) => {
-                    const staffInDay = dd?.staff[rowIdx]
-                    const shift: ShiftCode = staffInDay?.shifts[d.getDate() - 1] ?? '-'
+                <Fragment key={role}>
+                  <tr>
+                    <td colSpan={8} className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-0">
+                      <div className="sticky left-0 w-max px-2 py-1 md-label-m font-semibold text-[var(--md-on-surface-var)]">
+                        {ROLE_LABEL[role]} <span className="font-normal opacity-60">({rows.length})</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {rows.map((member, ri) => {
+                    const isMe = !!meName && member.name === meName
+                    const bg = isMe ? 'bg-teal-100 dark:bg-teal-900' : ROLE_BG[member.role]
+                    const meEdge = isMe ? 'border-y-2 border-y-teal-500 dark:border-y-teal-400' : ''
                     return (
-                      <td key={d.toISOString()} className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${isToday ? 'ring-1 ring-inset ring-teal-400 dark:ring-teal-600' : ''}`}>
-                        <span className={SHIFT_STYLE[shift]}>{SHIFT_DISPLAY[shift]}</span>
-                      </td>
+                      <tr key={`${member.name}-${ri}`} className={`border-b dark:border-gray-700 ${bg}`}>
+                        <td className={`border border-gray-200 dark:border-gray-700 px-2 py-1.5 sticky left-0 z-10 font-medium whitespace-nowrap ${bg} ${meEdge} ${isMe ? 'border-l-4 border-l-teal-500 dark:border-l-teal-400 text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}>
+                          {member.phone ? <a href={telHref(member.phone)} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a> : member.name}
+                          {isMe && <span className="ml-1 md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white">ฉัน</span>}
+                        </td>
+                        {cols.map(({ d, dd, isWeekend, isToday }) => {
+                          const staffInDay = dd?.staff.find(s => s.name === member.name)
+                          const shift: ShiftCode = staffInDay?.shifts[d.getDate() - 1] ?? '-'
+                          return (
+                            <td key={d.toISOString()} className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${isToday ? 'ring-1 ring-inset ring-teal-400 dark:ring-teal-600' : ''}`}>
+                              <span className={SHIFT_STYLE[shift]}>{SHIFT_DISPLAY[shift]}</span>
+                            </td>
+                          )
+                        })}
+                      </tr>
                     )
                   })}
-                </tr>
+                </Fragment>
               )
             })}
           </tbody>
@@ -517,8 +532,15 @@ function MonthSummary({ data }: { data: ScheduleData }) {
   if (!rows.length) return null
   return (
     <div className="bg-[var(--md-surface)] md-elev-1 rounded-2xl mt-4 p-4 sm:p-6 transition-colors duration-300">
-      <h2 className="md-title-m text-[var(--md-on-surface)] mb-3">💰 สรุปเวร &amp; เงินเวรเดือนนี้</h2>
-      <div className="overflow-x-auto">
+      <details className="group">
+        <summary className="cursor-pointer select-none list-none flex items-center justify-between gap-2">
+          <span className="md-title-m text-[var(--md-on-surface)]">💰 สรุปเวร &amp; เงินเวรเดือนนี้</span>
+          <span className="flex items-center gap-3 shrink-0">
+            <span className="md-label-m text-teal-700 dark:text-teal-300 font-medium">รวม ฿{fmt(total)}</span>
+            <span className="text-[var(--md-on-surface-var)] transition-transform group-open:rotate-90">›</span>
+          </span>
+        </summary>
+      <div className="overflow-x-auto mt-4">
         <table className="w-full text-sm border-collapse" style={{ minWidth: '460px' }}>
           <thead>
             <tr className="md-label-m text-[var(--md-on-surface-var)] border-b border-gray-200 dark:border-gray-700">
@@ -553,6 +575,7 @@ function MonthSummary({ data }: { data: ScheduleData }) {
       <p className="md-label-s text-[var(--md-on-surface-var)] mt-3">
         เงินเวร = จำนวน บ/ด × อัตรา (พยาบาล ฿1,200 · นักเทคโน ฿1,600 ต่อเวร · แพทย์ไม่คิด)
       </p>
+      </details>
     </div>
   )
 }
@@ -673,6 +696,19 @@ export default function ScheduleTable() {
   const days = Array.from({ length: totalDays }, (_, i) => i + 1)
   const mobileStaff = editing ? staff : staff.filter(m => m.name)
   const holidays = holidaysOf(data.month, data.year) // วันหยุดราชการ (auto)
+
+  // จัดกลุ่มแถวตาม role (คง index จริงไว้สำหรับ edit) + เลขลำดับเรียงต่อเนื่อง
+  const roleGroups = (() => {
+    let counter = 0
+    return ROLES.map(role => ({
+      role,
+      rows: staff
+        .map((member, rowIdx) => ({ member, rowIdx }))
+        .filter(({ member }) => member.role === role && (member.name || editing))
+        .map(r => ({ ...r, no: ++counter })),
+    })).filter(g => g.rows.length > 0)
+  })()
+  const monthColSpan = 2 + days.length + (editing ? 1 : 0)
 
   const calOffset = (new Date(data.year, data.month - 1, 1).getDay() + 6) % 7
   const calEndPad = (calOffset + totalDays) % 7 === 0 ? 0 : 7 - ((calOffset + totalDays) % 7)
@@ -902,7 +938,7 @@ export default function ScheduleTable() {
 
           {/* Desktop table */}
           <div className="hidden md:block bg-[var(--md-surface)] md-elev-1 rounded-b-2xl overflow-x-auto transition-colors duration-300">
-            <table className="text-xs border-collapse w-full" style={{ minWidth: '1100px' }}>
+            <table className="text-sm border-collapse w-full" style={{ minWidth: '1280px' }}>
               <thead>
                 <tr className="bg-gray-800 dark:bg-gray-950 text-white">
                   <th className="border border-gray-600 px-2 py-2 text-center w-8 sticky left-0 z-20 bg-gray-800 dark:bg-gray-950 font-medium">ลำดับ</th>
@@ -916,10 +952,10 @@ export default function ScheduleTable() {
                         key={d}
                         onClick={editing ? () => toggleWeekend(d) : undefined}
                         title={holName}
-                        className={`border border-gray-600 w-7 py-1 text-center transition-colors ${isWeekend ? 'bg-red-800 dark:bg-red-950' : ''} ${editing ? 'cursor-pointer hover:bg-gray-700' : ''}`}
+                        className={`border border-gray-600 w-9 py-1 text-center transition-colors ${isWeekend ? 'bg-red-800 dark:bg-red-950' : ''} ${editing ? 'cursor-pointer hover:bg-gray-700' : ''}`}
                       >
-                        <div className="text-[8px] leading-none mb-0.5 opacity-70">{dayAbbr}</div>
-                        <div className={isWeekend ? 'rounded-full border-2 border-white/80 w-5 h-5 flex items-center justify-center mx-auto text-xs' : ''}>
+                        <div className="md-label-s leading-none mb-0.5 opacity-70">{dayAbbr}</div>
+                        <div className={isWeekend ? 'rounded-full border-2 border-white/80 w-6 h-6 flex items-center justify-center mx-auto' : ''}>
                           {d}
                         </div>
                       </th>
@@ -929,63 +965,64 @@ export default function ScheduleTable() {
                 </tr>
               </thead>
               <tbody>
-                {staff.map((member, rowIdx) => {
-                  if (!member.name && !editing) {
-                    return (
-                      <tr key={rowIdx} className="border-b dark:border-gray-700">
-                        <td className="border border-gray-200 dark:border-gray-700 text-center text-gray-400 py-2 sticky left-0 z-10 bg-white dark:bg-gray-800">{rowIdx + 1}</td>
-                        <td className="border border-gray-200 dark:border-gray-700 px-2 py-2 text-gray-300 dark:text-gray-600 italic text-xs sticky left-8 z-10 bg-white dark:bg-gray-800">-</td>
-                        {days.map(d => <td key={d} className="border border-gray-100 dark:border-gray-700 text-center py-2" />)}
-                        <td className="border border-gray-200 dark:border-gray-700" /><td className="border border-gray-200 dark:border-gray-700" /><td className="border border-gray-200 dark:border-gray-700" />
-                      </tr>
-                    )
-                  }
-                  const isMe = !editing && !!meName && member.name === meName
-                  const bg = isMe ? 'bg-teal-100 dark:bg-teal-900' : ROLE_BG[member.role]
-                  const meEdge = isMe ? 'border-y-2 border-y-teal-500 dark:border-y-teal-400' : ''
-                  return (
-                    <tr key={rowIdx} className={`border-b dark:border-gray-700 ${editing ? '' : 'hover:brightness-95 dark:hover:brightness-110 transition-all duration-150'} ${bg}`}>
-                      <td className={`border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400 py-1.5 sticky left-0 z-10 ${bg} ${meEdge} ${isMe ? 'border-l-4 border-l-teal-500 dark:border-l-teal-400 text-teal-700 dark:text-teal-200 font-bold' : ''}`}>{rowIdx + 1}</td>
-                      <td className={`border border-gray-200 dark:border-gray-700 px-1 py-1.5 sticky left-8 z-10 ${bg} ${meEdge} ${editing ? '' : `font-medium whitespace-nowrap ${isMe ? 'text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}`}>
-                        {editing ? (
-                          <div className="flex flex-col gap-0.5">
-                            <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-xs bg-white dark:bg-gray-700 dark:text-gray-200" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(rowIdx, { name: e.target.value })} />
-                            <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] bg-white dark:bg-gray-700 dark:text-gray-200" value={member.phone ?? ''} placeholder="เบอร์โทร" onChange={e => patchStaff(rowIdx, { phone: e.target.value || undefined })} />
-                            <select className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700" value={member.role} onChange={e => patchStaff(rowIdx, { role: e.target.value as StaffMember['role'] })}>
-                              {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-                            </select>
-                          </div>
-                        ) : (
-                          <span className="flex items-center gap-1">
-                            {member.phone ? (
-                              <a href={telHref(member.phone)} title={`โทร ${member.phone}`} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a>
-                            ) : member.name}
-                            {isMe && <span className="md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white shrink-0">ฉัน</span>}
-                          </span>
-                        )}
+                {roleGroups.map(({ role, rows }) => (
+                  <Fragment key={role}>
+                    <tr>
+                      <td colSpan={monthColSpan} className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-0">
+                        <div className="sticky left-0 w-max px-3 py-1.5 md-label-m font-semibold text-[var(--md-on-surface-var)]">
+                          {ROLE_LABEL[role]} <span className="font-normal opacity-60">({rows.length})</span>
+                        </div>
                       </td>
-                      {member.shifts.map((shift, dayIdx) => {
-                        const isWeekend = weekendDays.includes(dayIdx + 1) || !!holidays[dayIdx + 1]
-                        return (
-                          <td
-                            key={dayIdx}
-                            onClick={editing ? () => cycleCell(rowIdx, dayIdx) : undefined}
-                            className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${editing ? 'cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:bg-teal-100 dark:active:bg-teal-900/50' : ''}`}
-                          >
-                            <span className={SHIFT_STYLE[shift]} title={SHIFT_LABELS[shift]}>
-                              {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
-                            </span>
-                          </td>
-                        )
-                      })}
-                      {editing && (
-                        <td className="border border-gray-200 dark:border-gray-700 text-center">
-                          <button onClick={() => removeStaff(rowIdx)} className="text-red-500 dark:text-red-400 text-xs px-1 hover:text-red-700 transition-colors">✕</button>
-                        </td>
-                      )}
                     </tr>
-                  )
-                })}
+                    {rows.map(({ member, rowIdx, no }) => {
+                      const isMe = !editing && !!meName && member.name === meName
+                      const bg = isMe ? 'bg-teal-100 dark:bg-teal-900' : ROLE_BG[member.role]
+                      const meEdge = isMe ? 'border-y-2 border-y-teal-500 dark:border-y-teal-400' : ''
+                      return (
+                        <tr key={rowIdx} className={`border-b dark:border-gray-700 ${editing ? '' : 'hover:brightness-95 dark:hover:brightness-110 transition-all duration-150'} ${bg}`}>
+                          <td className={`border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400 py-1.5 sticky left-0 z-10 ${bg} ${meEdge} ${isMe ? 'border-l-4 border-l-teal-500 dark:border-l-teal-400 text-teal-700 dark:text-teal-200 font-bold' : ''}`}>{no}</td>
+                          <td className={`border border-gray-200 dark:border-gray-700 px-1 py-1.5 sticky left-8 z-10 ${bg} ${meEdge} ${editing ? '' : `font-medium whitespace-nowrap ${isMe ? 'text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}`}>
+                            {editing ? (
+                              <div className="flex flex-col gap-0.5">
+                                <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-xs bg-white dark:bg-gray-700 dark:text-gray-200" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(rowIdx, { name: e.target.value })} />
+                                <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] bg-white dark:bg-gray-700 dark:text-gray-200" value={member.phone ?? ''} placeholder="เบอร์โทร" onChange={e => patchStaff(rowIdx, { phone: e.target.value || undefined })} />
+                                <select className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700" value={member.role} onChange={e => patchStaff(rowIdx, { role: e.target.value as StaffMember['role'] })}>
+                                  {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                                </select>
+                              </div>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                {member.phone ? (
+                                  <a href={telHref(member.phone)} title={`โทร ${member.phone}`} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a>
+                                ) : member.name}
+                                {isMe && <span className="md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white shrink-0">ฉัน</span>}
+                              </span>
+                            )}
+                          </td>
+                          {member.shifts.map((shift, dayIdx) => {
+                            const isWeekend = weekendDays.includes(dayIdx + 1) || !!holidays[dayIdx + 1]
+                            return (
+                              <td
+                                key={dayIdx}
+                                onClick={editing ? () => cycleCell(rowIdx, dayIdx) : undefined}
+                                className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${editing ? 'cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:bg-teal-100 dark:active:bg-teal-900/50' : ''}`}
+                              >
+                                <span className={SHIFT_STYLE[shift]} title={SHIFT_LABELS[shift]}>
+                                  {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
+                                </span>
+                              </td>
+                            )
+                          })}
+                          {editing && (
+                            <td className="border border-gray-200 dark:border-gray-700 text-center">
+                              <button onClick={() => removeStaff(rowIdx)} className="text-red-500 dark:text-red-400 text-xs px-1 hover:text-red-700 transition-colors">✕</button>
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
             {editing && (
@@ -997,13 +1034,19 @@ export default function ScheduleTable() {
 
           {/* Mobile calendar cards */}
           <div className="md:hidden rounded-b-2xl space-y-4 pt-4">
-            {mobileStaff.map((member, i) => {
+            {ROLES.map(role => {
+              const group = mobileStaff.filter(m => m.role === role)
+              if (!group.length) return null
+              return (
+                <Fragment key={role}>
+                  <p className="md-title-s text-[var(--md-on-surface-var)] px-1 pt-1">{ROLE_LABEL[role]} <span className="font-normal opacity-60">({group.length})</span></p>
+                  {group.map((member, gi) => {
               const realIdx = staff.indexOf(member)
               return (
                 <div
-                  key={i}
+                  key={realIdx}
                   className="anim-fade-up rounded-2xl bg-[var(--md-surface)] md-elev-2 border border-gray-100 dark:border-gray-700/50 overflow-hidden transition-colors duration-300"
-                  style={{ animationDelay: `${i * 55}ms` }}
+                  style={{ animationDelay: `${gi * 55}ms` }}
                 >
                   {/* Card header — 16dp padding */}
                   <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-700/60">
@@ -1075,6 +1118,9 @@ export default function ScheduleTable() {
                     </div>
                   </div>
                 </div>
+              )
+                  })}
+                </Fragment>
               )
             })}
             {editing && (
