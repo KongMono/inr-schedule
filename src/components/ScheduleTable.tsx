@@ -33,10 +33,12 @@ const SHIFT_DISPLAY: Record<ShiftCode, string> = {
 
 const DAY_ABBR = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
 
+// พื้นหลังแถวตามตำแหน่ง — dark mode ใช้สีทึบ (ไม่ใช่ /40) เพื่อให้ช่อง
+// sticky ซ้าย (ลำดับ/ชื่อ) ไม่โปร่งจนช่องวันลอดทะลุตอน scroll แนวนอน
 const ROLE_BG: Record<string, string> = {
-  doctor: 'bg-blue-50 dark:bg-blue-950/40',
+  doctor: 'bg-blue-50 dark:bg-[#1c2440]',
   nurse:  'bg-white dark:bg-gray-800',
-  tech:   'bg-green-50 dark:bg-green-950/40',
+  tech:   'bg-green-50 dark:bg-[#142827]',
 }
 
 const ROLE_LABEL: Record<string, string> = {
