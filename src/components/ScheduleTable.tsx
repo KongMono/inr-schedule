@@ -10,7 +10,7 @@ import {
   type StaffMember,
 } from '@/data/schedule'
 import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
-import { fetchSchedules, saveMonth, removeMonth, resetAll } from '@/lib/scheduleRepo'
+import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules } from '@/lib/scheduleRepo'
 
 const EDIT_PIN = '11223344'
 const EDIT_KEY = 'inr-schedule:edit'
@@ -227,15 +227,34 @@ export default function ScheduleTable() {
     [exists, existingIdx, schedules, selMonth, selYear, template],
   )
 
+  // save เฉพาะตอนแก้ไขเอง (เรียกจาก updateCurrent) — ไม่ผูกกับทุกการเปลี่ยน
+  // state เพื่อตัด feedback loop กับ realtime
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    if (!hydrated) return
-    const m = schedules.find(s => s.month === selMonth && s.thaiYear === selYear)
-    if (!m) return
+  function scheduleSave(m: ScheduleData) {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => saveMonth(m), 600)
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [schedules, selMonth, selYear, hydrated])
+  }
+
+  // realtime: ฟังการเปลี่ยนแปลงจาก Supabase แล้ว merge เข้า state
+  // ข้ามเดือนที่กำลังแก้อยู่ เพื่อไม่ทับสิ่งที่พิมพ์ค้าง
+  const liveRef = useRef({ editing, selMonth, selYear })
+  liveRef.current = { editing, selMonth, selYear }
+  useEffect(() => {
+    if (!hydrated) return
+    const unsub = subscribeSchedules((c) => {
+      const live = liveRef.current
+      if (live.editing && c.month === live.selMonth && c.thaiYear === live.selYear) return
+      setSchedules(prev => {
+        if (c.type === 'delete') {
+          return prev.filter(m => !(m.month === c.month && m.thaiYear === c.thaiYear))
+        }
+        const i = prev.findIndex(m => m.month === c.month && m.thaiYear === c.thaiYear)
+        if (i >= 0) return prev.map((m, idx) => idx === i ? c.data! : m)
+        return [...prev, c.data!].sort(byDate)
+      })
+    })
+    return unsub
+  }, [hydrated])
 
   if (!hydrated) {
     return (
@@ -264,8 +283,12 @@ export default function ScheduleTable() {
   function updateCurrent(fn: (m: ScheduleData) => ScheduleData) {
     setSchedules(prev => {
       const i = prev.findIndex(m => m.month === selMonth && m.thaiYear === selYear)
-      if (i >= 0) return prev.map((m, idx) => idx === i ? fn(m) : m)
-      return [...prev, fn(createEmptyMonth(selMonth, selYear, prev[prev.length - 1]))].sort(byDate)
+      const next = i >= 0
+        ? prev.map((m, idx) => idx === i ? fn(m) : m)
+        : [...prev, fn(createEmptyMonth(selMonth, selYear, prev[prev.length - 1]))].sort(byDate)
+      const saved = next.find(m => m.month === selMonth && m.thaiYear === selYear)
+      if (saved) scheduleSave(saved)
+      return next
     })
   }
   function cycleCell(si: number, di: number) {

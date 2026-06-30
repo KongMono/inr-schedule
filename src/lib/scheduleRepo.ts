@@ -18,8 +18,8 @@ const seedIdentity = (seedSchedules[0]?.staff ?? []).map((s) => ({
   role: s.role,
 }))
 
-function syncIdentity(list: ScheduleData[]): ScheduleData[] {
-  return list.map((m) => ({
+export function applyIdentity(m: ScheduleData): ScheduleData {
+  return {
     ...m,
     staff: m.staff.map((s, i) => ({
       ...s,
@@ -28,7 +28,11 @@ function syncIdentity(list: ScheduleData[]): ScheduleData[] {
       totalWork: undefined,
       totalNight: undefined,
     })),
-  }))
+  }
+}
+
+function syncIdentity(list: ScheduleData[]): ScheduleData[] {
+  return list.map(applyIdentity)
 }
 
 // แถวใน Supabase: { month, thai_year, data jsonb }
@@ -84,4 +88,38 @@ export async function resetAll(): Promise<ScheduleData[]> {
 function mergeLocal(m: ScheduleData): ScheduleData[] {
   const list = loadSchedules().filter((x) => !(x.month === m.month && x.thaiYear === m.thaiYear))
   return [...list, m].sort(sortByDate)
+}
+
+export interface RealtimeChange {
+  type: 'upsert' | 'delete'
+  month: number
+  thaiYear: number
+  data?: ScheduleData
+}
+
+// subscribe การเปลี่ยนแปลง table schedules แบบ realtime
+// คืน unsubscribe; ถ้าไม่มี Supabase คืน no-op
+export function subscribeSchedules(onChange: (c: RealtimeChange) => void): () => void {
+  if (!supabase) return () => {}
+  const channel = supabase
+    .channel('schedules-realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: TABLE },
+      (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const old = payload.old as { month?: number; thai_year?: number }
+          if (old?.month != null && old?.thai_year != null) {
+            onChange({ type: 'delete', month: old.month, thaiYear: old.thai_year })
+          }
+          return
+        }
+        const row = payload.new as { month: number; thai_year: number; data: ScheduleData }
+        if (row?.data) {
+          onChange({ type: 'upsert', month: row.month, thaiYear: row.thai_year, data: applyIdentity(row.data) })
+        }
+      },
+    )
+    .subscribe()
+  return () => { supabase?.removeChannel(channel) }
 }
