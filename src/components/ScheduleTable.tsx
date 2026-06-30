@@ -202,7 +202,6 @@ export default function ScheduleTable() {
       setSchedules(loaded)
       const last = loaded[loaded.length - 1]
       if (last) { setSelMonth(last.month); setSelYear(last.thaiYear) }
-      if (sessionStorage.getItem(EDIT_KEY) === '1') setEditing(true)
       const saved = localStorage.getItem(THEME_KEY)
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       const isDark = saved ? saved === 'dark' : prefersDark
@@ -252,7 +251,6 @@ export default function ScheduleTable() {
   const { department, totalDays, weekendDays, staff } = data
   const days = Array.from({ length: totalDays }, (_, i) => i + 1)
   const mobileStaff = editing ? staff : staff.filter(m => m.name)
-  const numOrUndef = (v: string) => v === '' ? undefined : Number(v)
 
   const calOffset = (new Date(data.year, data.month - 1, 1).getDay() + 6) % 7
   const calEndPad = (calOffset + totalDays) % 7 === 0 ? 0 : 7 - ((calOffset + totalDays) % 7)
@@ -494,26 +492,13 @@ export default function ScheduleTable() {
                           </td>
                         )
                       })}
-                      {editing ? (
-                        <>
-                          {(['totalWork', 'totalOT', 'totalNight'] as const).map(field => (
-                            <td key={field} className="border border-gray-200 dark:border-gray-700 p-0.5">
-                              <input className="w-7 text-center text-xs border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-200"
-                                value={member[field] ?? ''}
-                                placeholder={field === 'totalWork' ? String(countWork(member) || '') : field === 'totalNight' ? String(countNight(member) || '') : ''}
-                                onChange={e => patchStaff(rowIdx, { [field]: numOrUndef(e.target.value) })} />
-                            </td>
-                          ))}
-                          <td className="border border-gray-200 dark:border-gray-700 text-center">
-                            <button onClick={() => removeStaff(rowIdx)} className="text-red-500 dark:text-red-400 text-xs px-1 hover:text-red-700 transition-colors">✕</button>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-[var(--md-on-surface)] py-1.5">{member.totalWork ?? (countWork(member) > 0 ? countWork(member) : '')}</td>
-                          <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-teal-600 dark:text-teal-400 py-1.5">{member.totalOT ?? ''}</td>
-                          <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-purple-600 dark:text-purple-400 py-1.5">{member.totalNight ?? (countNight(member) > 0 ? countNight(member) : '')}</td>
-                        </>
+                      <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-[var(--md-on-surface)] py-1.5">{countWork(member) > 0 ? countWork(member) : ''}</td>
+                      <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-teal-600 dark:text-teal-400 py-1.5">{member.totalOT ?? ''}</td>
+                      <td className="border border-gray-200 dark:border-gray-700 text-center font-medium text-purple-600 dark:text-purple-400 py-1.5">{countNight(member) > 0 ? countNight(member) : ''}</td>
+                      {editing && (
+                        <td className="border border-gray-200 dark:border-gray-700 text-center">
+                          <button onClick={() => removeStaff(rowIdx)} className="text-red-500 dark:text-red-400 text-xs px-1 hover:text-red-700 transition-colors">✕</button>
+                        </td>
                       )}
                     </tr>
                   )
