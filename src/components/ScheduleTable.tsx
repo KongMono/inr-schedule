@@ -539,8 +539,8 @@ export default function ScheduleTable() {
             </div>
           </div>
 
-          {/* Month nav — only for week / month views */}
-          {view !== 'today' && (
+          {/* Month nav — month view only */}
+          {view === 'month' && (
             <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
               <BtnIcon onClick={() => stepMonth(-1)}>‹</BtnIcon>
               <select
