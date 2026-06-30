@@ -652,6 +652,21 @@ export default function ScheduleTable() {
     return out
   }, [schedules])
 
+  // เดือนต้นแบบสำหรับก๊อปปี้ = เดือนก่อนหน้า (ถ้าไม่มี ใช้เดือนล่าสุดก่อนปัจจุบัน)
+  const prevSource = useMemo(() => {
+    let m = selMonth - 1, y = selYear
+    if (m < 1) { m = 12; y -= 1 }
+    const prev = schedules.find(s => s.month === m && s.thaiYear === y)
+    if (prev) return prev
+    const before = schedules
+      .filter(s => s.thaiYear < selYear || (s.thaiYear === selYear && s.month < selMonth))
+      .sort(byDate)
+    return before[before.length - 1]
+  }, [schedules, selMonth, selYear])
+
+  const captureRef = useRef<HTMLDivElement>(null)
+  const [exporting, setExporting] = useState(false)
+
   // save เฉพาะตอนแก้ไขเอง (เรียกจาก updateCurrent) — ไม่ผูกกับทุกการเปลี่ยน
   // state เพื่อตัด feedback loop กับ realtime
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -780,17 +795,73 @@ export default function ScheduleTable() {
     })
   }
 
+  function copyFromPrevious() {
+    if (!prevSource) return
+    if (!confirm(`ก๊อปปี้เวรจาก ${THAI_MONTHS[prevSource.month]} ${prevSource.thaiYear} มาเดือนนี้?\n(เวรเดิมของเดือนนี้จะถูกแทนที่ — เริ่มเป็นฐานแล้วแก้ต่อได้)`)) return
+    updateCurrent(m => ({
+      ...m,
+      staff: m.staff.map(s => {
+        const from = prevSource.staff.find(x => x.name === s.name)
+        if (!from) return s
+        return { ...s, shifts: Array.from({ length: m.totalDays }, (_, i) => from.shifts[i] ?? '-') }
+      }),
+    }))
+  }
+
+  // บันทึก/แชร์ตารางเป็นรูป PNG
+  async function exportImage() {
+    const node = captureRef.current
+    if (!node || exporting) return
+    setExporting(true)
+    // ปลด overflow ของตารางชั่วคราว เพื่อแคปได้เต็มความกว้าง (ไม่โดนตัด)
+    const scrollers = Array.from(node.querySelectorAll<HTMLElement>('.overflow-x-auto'))
+    const prevOverflow = scrollers.map(s => s.style.overflow)
+    scrollers.forEach(s => { s.style.overflow = 'visible' })
+    try {
+      const { toPng } = await import('html-to-image')
+      const dataUrl = await toPng(node, {
+        pixelRatio: 2,
+        width: node.scrollWidth,
+        backgroundColor: dark ? '#111827' : '#F3F4F6',
+        filter: (el) => !(el instanceof HTMLElement && el.dataset.exportHide !== undefined),
+      })
+      const label = view === 'month'
+        ? `${THAI_MONTHS[selMonth]}-${selYear}`
+        : view === 'week' ? 'สัปดาห์นี้' : 'วันนี้'
+      const fname = `ตารางเวร-${label}.png`
+      // แชร์ผ่าน Web Share (มือถือ → LINE ได้) ถ้าไม่รองรับ → ดาวน์โหลด
+      try {
+        const blob = await (await fetch(dataUrl)).blob()
+        const file = new File([blob], fname, { type: 'image/png' })
+        const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean }
+        if (nav.canShare && nav.canShare({ files: [file] })) {
+          await nav.share({ files: [file] } as ShareData)
+          return
+        }
+      } catch { /* ยกเลิก share หรือไม่รองรับ → ดาวน์โหลดแทน */ }
+      const a = document.createElement('a')
+      a.href = dataUrl; a.download = fname; a.click()
+    } catch (e) {
+      console.error('[export] error:', e)
+      alert('บันทึกรูปไม่สำเร็จ ลองใหม่อีกครั้ง')
+    } finally {
+      scrollers.forEach((s, i) => { s.style.overflow = prevOverflow[i] })
+      setExporting(false)
+    }
+  }
+
   const slideClass = slideDir === 'left' ? 'anim-slide-left' : 'anim-slide-right'
 
   return (
     <div className="min-h-screen bg-[var(--md-background)] transition-colors duration-300 p-2 sm:p-4">
       <div className="max-w-4xl mx-auto">
+       <div ref={captureRef} className="bg-[var(--md-background)]">
 
         {/* ── MD3 Top App Bar ── */}
         <div className="relative bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-6 sm:px-6 sm:py-7 transition-colors duration-300">
 
           {/* Contact page link — absolute, left */}
-          <div className="absolute top-4 left-4 z-10">
+          <div data-export-hide className="absolute top-4 left-4 z-10">
             <Link
               href="/contact"
               title="ข้อมูลติดต่อ"
@@ -801,7 +872,7 @@ export default function ScheduleTable() {
           </div>
 
           {/* Dark mode toggle — absolute so it doesn't affect centering */}
-          <div className="absolute top-4 right-4 z-10">
+          <div data-export-hide className="absolute top-4 right-4 z-10">
             <ThemeSwitch dark={dark} onToggle={toggleDark} />
           </div>
 
@@ -838,7 +909,7 @@ export default function ScheduleTable() {
           </div>
 
           {/* View tabs — segmented control */}
-          <div className="anim-header-4 flex justify-center mt-5">
+          <div data-export-hide className="anim-header-4 flex justify-center mt-5">
             <div className="flex w-full max-w-sm gap-1 p-1 rounded-full bg-[var(--md-surface-variant)] dark:bg-gray-800">
               {([['today', 'วันนี้'], ['week', 'สัปดาห์นี้'], ['month', 'เดือนนี้']] as const).map(([v, label]) => (
                 <button
@@ -854,7 +925,7 @@ export default function ScheduleTable() {
           </div>
 
           {/* เวรของฉัน — เลือกชื่อตัวเอง */}
-          <div className="flex justify-center items-center gap-2 mt-3">
+          <div data-export-hide className="flex justify-center items-center gap-2 mt-3">
             <div className="relative inline-flex items-center">
               <span className="absolute left-3 pointer-events-none text-sm">👤</span>
               <select
@@ -872,9 +943,14 @@ export default function ScheduleTable() {
             )}
           </div>
 
+          {/* บันทึก/แชร์ภาพ */}
+          <div data-export-hide className="flex justify-center mt-3">
+            <BtnTonal onClick={exportImage}>{exporting ? 'กำลังบันทึก…' : '📷 บันทึก / แชร์ภาพ'}</BtnTonal>
+          </div>
+
           {/* Month nav — month view only */}
           {view === 'month' && (
-            <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
+            <div data-export-hide className="flex flex-wrap justify-center items-center gap-2 mt-4">
               <BtnIcon onClick={() => stepMonth(-1)}>‹</BtnIcon>
               <select
                 value={selMonth}
@@ -917,6 +993,11 @@ export default function ScheduleTable() {
           )}
           {view === 'month' && !editing && !exists && (
             <p className="md-body-s text-center text-[var(--md-on-surface-var)] mt-3">ยังไม่มีข้อมูลเดือนนี้</p>
+          )}
+          {view === 'month' && editing && prevSource && (
+            <div data-export-hide className="flex justify-center mt-3">
+              <BtnTonal onClick={copyFromPrevious}>📋 ก๊อปปี้เวรจาก {THAI_MONTHS[prevSource.month]} {prevSource.thaiYear}</BtnTonal>
+            </div>
           )}
           {view === 'month' && editing && (
             <p className="md-body-s text-center text-[var(--md-on-surface-var)] mt-3">
@@ -1133,6 +1214,8 @@ export default function ScheduleTable() {
           {!editing && <MonthSummary data={data} />}
 
         </div>}{/* end month view */}
+
+       </div>{/* end capture area */}
 
         {/* Footer */}
         <div className="anim-fade-up bg-[var(--md-surface)] md-elev-1 mt-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5 md-body-s text-[var(--md-on-surface-var)] space-y-1.5 transition-colors duration-300">
