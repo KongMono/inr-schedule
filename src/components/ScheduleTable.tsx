@@ -232,19 +232,52 @@ const THAI_HOLIDAYS: Record<number, Record<string, string>> = {
     '12-10': 'วันรัฐธรรมนูญ',
     '12-31': 'วันสิ้นปี',
   },
-  // 2570 (2027) — ใส่เฉพาะวันที่ตายตัว (วันพระจันทรคติเลื่อน ต้องเพิ่มภายหลัง)
   2027: {
     '1-1': 'วันขึ้นปีใหม่',
+    '2-21': 'วันมาฆบูชา',
+    '2-22': 'ชดเชยวันมาฆบูชา',
     '4-6': 'วันจักรี',
     '4-13': 'วันสงกรานต์', '4-14': 'วันสงกรานต์', '4-15': 'วันสงกรานต์',
     '5-1': 'วันแรงงานแห่งชาติ',
+    '5-3': 'ชดเชยวันแรงงานแห่งชาติ',
     '5-4': 'วันฉัตรมงคล',
+    '5-20': 'วันวิสาขบูชา',
+    '6-3': 'วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชินี',
+    '7-18': 'วันอาสาฬหบูชา',
+    '7-19': 'วันเข้าพรรษา',
+    '7-20': 'ชดเชยวันอาสาฬหบูชา',
     '7-28': 'วันเฉลิมพระชนมพรรษา ร.10',
     '8-12': 'วันแม่แห่งชาติ',
     '10-13': 'วันนวมินทรมหาราช',
     '10-23': 'วันปิยมหาราช',
+    '10-25': 'ชดเชยวันปิยมหาราช',
+    '12-5': 'วันพ่อแห่งชาติ',
+    '12-6': 'ชดเชยวันพ่อแห่งชาติ',
+    '12-10': 'วันรัฐธรรมนูญ',
+    '12-31': 'วันสิ้นปี',
+  },
+  2028: {
+    '1-1': 'วันขึ้นปีใหม่',
+    '1-3': 'ชดเชยวันขึ้นปีใหม่',
+    '2-10': 'วันมาฆบูชา',
+    '4-6': 'วันจักรี',
+    '4-13': 'วันสงกรานต์', '4-14': 'วันสงกรานต์', '4-15': 'วันสงกรานต์',
+    '4-17': 'ชดเชยวันสงกรานต์',
+    '5-1': 'วันแรงงานแห่งชาติ',
+    '5-4': 'วันฉัตรมงคล',
+    '5-8': 'วันวิสาขบูชา',
+    '6-3': 'วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชินี',
+    '6-5': 'ชดเชยวันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชินี',
+    '7-6': 'วันอาสาฬหบูชา',
+    '7-7': 'วันเข้าพรรษา',
+    '7-28': 'วันเฉลิมพระชนมพรรษา ร.10',
+    '8-12': 'วันแม่แห่งชาติ',
+    '8-14': 'ชดเชยวันแม่แห่งชาติ',
+    '10-13': 'วันนวมินทรมหาราช',
+    '10-23': 'วันปิยมหาราช',
     '12-5': 'วันพ่อแห่งชาติ',
     '12-10': 'วันรัฐธรรมนูญ',
+    '12-11': 'ชดเชยวันรัฐธรรมนูญ',
     '12-31': 'วันสิ้นปี',
   },
 }
@@ -666,6 +699,14 @@ export default function ScheduleTable() {
 
   const captureRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState(false)
+  const [holTip, setHolTip] = useState<{ text: string; x: number; y: number } | null>(null)
+
+  function showHolTip(e: React.MouseEvent | React.TouchEvent, text: string) {
+    if (!text) return
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setHolTip({ text, x: r.left + r.width / 2, y: r.top + window.scrollY })
+  }
+  function hideHolTip() { setHolTip(null) }
 
   // save เฉพาะตอนแก้ไขเอง (เรียกจาก updateCurrent) — ไม่ผูกกับทุกการเปลี่ยน
   // state เพื่อตัด feedback loop กับ realtime
@@ -919,7 +960,10 @@ export default function ScheduleTable() {
                   key={dayIdx}
                   onMouseDown={editing ? addRipple : undefined}
                   onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
-                  title={holName}
+                  onMouseEnter={holName && !editing ? e => showHolTip(e, holName) : undefined}
+                  onMouseLeave={holName && !editing ? hideHolTip : undefined}
+                  onTouchStart={holName && !editing ? e => showHolTip(e, holName) : undefined}
+                  onTouchEnd={holName && !editing ? hideHolTip : undefined}
                   className={`md-state flex flex-col items-center justify-between rounded-2xl border py-2 min-h-[56px] transition-all duration-150 ${
                     isRed
                       ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/60'
@@ -1125,8 +1169,9 @@ export default function ScheduleTable() {
                       <th
                         key={d}
                         onClick={editing ? () => toggleWeekend(d) : undefined}
-                        title={holName}
-                        className={`border border-gray-600 w-9 py-1 text-center transition-colors ${isWeekend ? 'bg-red-800 dark:bg-red-950' : ''} ${editing ? 'cursor-pointer hover:bg-gray-700' : ''}`}
+                        onMouseEnter={holName ? e => showHolTip(e, holName) : undefined}
+                        onMouseLeave={holName ? hideHolTip : undefined}
+                        className={`border border-gray-600 w-9 py-1 text-center transition-colors ${isWeekend ? 'bg-red-800 dark:bg-red-950' : ''} ${editing ? 'cursor-pointer hover:bg-gray-700' : ''} ${holName && !editing ? 'cursor-help' : ''}`}
                       >
                         <div className="md-label-s leading-none mb-0.5 opacity-70">{dayAbbr}</div>
                         <div className={isWeekend ? 'rounded-full border-2 border-white/80 w-6 h-6 flex items-center justify-center mx-auto' : ''}>
@@ -1260,6 +1305,19 @@ export default function ScheduleTable() {
       </div>
 
       {showPin && <PinModal onCancel={() => setShowPin(false)} onSubmit={unlock} />}
+
+      {/* Holiday tooltip bubble — fixed position, escapes overflow */}
+      {holTip && (
+        <div
+          className="pointer-events-none fixed z-[9999] -translate-x-1/2 -translate-y-full"
+          style={{ left: holTip.x, top: holTip.y - 8 }}
+        >
+          <div className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 md-label-m px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
+            {holTip.text}
+          </div>
+          <div className="mx-auto w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-900 dark:border-t-gray-100" />
+        </div>
+      )}
     </div>
   )
 }
