@@ -23,8 +23,8 @@ const SHIFT_STYLE: Record<ShiftCode, string> = {
   A:    'text-red-600 dark:text-red-400 font-bold text-lg leading-none',
   N:    'text-purple-600 dark:text-purple-400 font-medium',
   N2:   'text-purple-600 dark:text-purple-400 font-medium',
-  OFF:  'text-gray-600 dark:text-gray-300 font-medium text-xs',
-  SWAP: 'text-orange-500 dark:text-orange-400 text-xs',
+  OFF:  'text-orange-600 dark:text-orange-400 font-bold text-xs',
+  SWAP: 'text-indigo-500 dark:text-indigo-400 text-xs',
   '-':  'text-gray-300 dark:text-gray-600',
 }
 
@@ -167,7 +167,7 @@ function Legend() {
   return (
     <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 sm:gap-4 mt-3 text-xs sm:text-sm">
       {[
-        { sym: 'บ/ด', symCls: 'text-gray-600 dark:text-gray-300 font-medium text-xs', label: 'เวรบ่ายดึก' },
+        { sym: 'บ/ด', symCls: 'text-orange-600 dark:text-orange-400 font-bold text-xs', label: 'เวรบ่ายดึก' },
         { sym: '/',   symCls: 'text-blue-600 dark:text-blue-400 font-medium text-lg', label: 'แพทย์เวร' },
         { sym: '✕',   symCls: 'text-red-600 dark:text-red-400 font-bold text-lg', label: 'ไม่อยู่เวร' },
         { sym: 'S',   symCls: 'text-purple-600 dark:text-purple-400 font-medium', label: 'standby' },
@@ -265,7 +265,7 @@ function holidaysOf(month: number, gregYear: number): Record<number, string> {
 const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolean; dot: string; accent: string }[] = [
   { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-500',   accent: 'border-l-blue-400 dark:border-l-blue-500' },
   { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-500', accent: 'border-l-purple-400 dark:border-l-purple-500' },
-  { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-gray-400',   accent: 'border-l-gray-400 dark:border-l-gray-500' },
+  { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-orange-500', accent: 'border-l-orange-500 dark:border-l-orange-400' },
   { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-500', accent: 'border-l-orange-400 dark:border-l-orange-500' },
 ]
 
@@ -761,6 +761,8 @@ export default function ScheduleTable() {
     updateCurrent(m => ({ ...m, staff: [...m.staff, emptyStaff('nurse', m.totalDays)] }))
   }
   function removeStaff(si: number) {
+    const name = data.staff[si]?.name ?? ''
+    if (!confirm(`ลบ ${name} ออกจากตารางเดือนนี้?`)) return
     updateCurrent(m => ({ ...m, staff: m.staff.filter((_, i) => i !== si) }))
   }
   function toggleWeekend(day: number) {
@@ -817,13 +819,19 @@ export default function ScheduleTable() {
     const scrollers = Array.from(node.querySelectorAll<HTMLElement>('.overflow-x-auto'))
     const prevOverflow = scrollers.map(s => s.style.overflow)
     scrollers.forEach(s => { s.style.overflow = 'visible' })
+    // ซ่อน toolbar จริง (display:none) เพื่อให้ layout ยุบ ไม่เหลือช่องว่างใน header
+    const hidden = Array.from(node.querySelectorAll<HTMLElement>('[data-export-hide]'))
+    const prevDisplay = hidden.map(h => h.style.display)
+    hidden.forEach(h => { h.style.display = 'none' })
+    // เพิ่ม padding รอบภาพ กันเนื้อหาชิดขอบ
+    const prevPadding = node.style.padding
+    node.style.padding = '16px'
     try {
       const { toPng } = await import('html-to-image')
       const dataUrl = await toPng(node, {
         pixelRatio: 2,
         width: node.scrollWidth,
         backgroundColor: dark ? '#111827' : '#F3F4F6',
-        filter: (el) => !(el instanceof HTMLElement && el.dataset.exportHide !== undefined),
       })
       const label = view === 'month'
         ? `${THAI_MONTHS[selMonth]}-${selYear}`
@@ -846,8 +854,93 @@ export default function ScheduleTable() {
       alert('บันทึกรูปไม่สำเร็จ ลองใหม่อีกครั้ง')
     } finally {
       scrollers.forEach((s, i) => { s.style.overflow = prevOverflow[i] })
+      hidden.forEach((h, i) => { h.style.display = prevDisplay[i] })
+      node.style.padding = prevPadding
       setExporting(false)
     }
+  }
+
+  // การ์ดปฏิทินราย mobile — reuse ได้ทั้งใน group และ pinned "เวรของฉัน"
+  function renderMobileCard(member: StaffMember, animIdx: number, pinned = false) {
+    const realIdx = staff.indexOf(member)
+    return (
+      <div
+        key={pinned ? `pin-${realIdx}` : realIdx}
+        className={`anim-fade-up rounded-2xl bg-[var(--md-surface)] md-elev-2 border overflow-hidden transition-colors duration-300 ${pinned ? 'ring-2 ring-teal-400 dark:ring-teal-500 border-transparent' : 'border-gray-100 dark:border-gray-700/50'}`}
+        style={{ animationDelay: `${animIdx * 55}ms` }}
+      >
+        {/* Card header — 16dp padding */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-700/60">
+          {editing ? (
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
+              <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.phone ?? ''} placeholder="เบอร์โทร" inputMode="tel" onChange={e => patchStaff(realIdx, { phone: e.target.value || undefined })} />
+              <select className="md-label-m border dark:border-gray-600 rounded-xl px-2 py-1.5 text-gray-500 dark:text-gray-400 bg-[var(--md-surface-variant)]" value={member.role} onChange={e => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
+                {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+              </select>
+              <button onClick={() => removeStaff(realIdx)} className="text-red-400 hover:text-red-600 transition-colors w-8 h-8 flex items-center justify-center">✕</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 min-w-0">
+              {member.phone ? (
+                <a href={telHref(member.phone)} className="md-title-m text-teal-700 dark:text-teal-300 truncate flex items-center gap-1" title={`โทร ${member.phone}`}>
+                  <span className="truncate">{member.name}</span>
+                  <span className="text-sm shrink-0">📞</span>
+                </a>
+              ) : (
+                <span className="md-title-m text-[var(--md-on-surface)] truncate">{member.name}</span>
+              )}
+              {pinned && <span className="md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white shrink-0">ฉัน</span>}
+              <span className="md-label-m px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 shrink-0">{ROLE_LABEL[member.role]}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Calendar grid — 16dp padding, 8dp gap */}
+        <div className="p-4 bg-[var(--md-surface-variant)]/30">
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'].map((d, ci) => (
+              <div key={d} className={`md-label-s text-center py-1 ${ci >= 5 ? 'text-red-400 dark:text-red-500' : 'text-[var(--md-on-surface-var)]'}`}>{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: calOffset }, (_, i) => (
+              <div key={`s${i}`} className={`rounded-2xl min-h-[56px] ${i >= 5 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}`} />
+            ))}
+            {member.shifts.map((shift, dayIdx) => {
+              const day = dayIdx + 1
+              const colIdx = (calOffset + dayIdx) % 7
+              const isWeekendCol = colIdx >= 5
+              const holName = holidays[day]
+              const isHoliday = (weekendDays.includes(day) || !!holName) && !isWeekendCol
+              const isRed = isWeekendCol || isHoliday
+              return (
+                <div
+                  key={dayIdx}
+                  onMouseDown={editing ? addRipple : undefined}
+                  onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
+                  title={holName}
+                  className={`md-state flex flex-col items-center justify-between rounded-2xl border py-2 min-h-[56px] transition-all duration-150 ${
+                    isRed
+                      ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/60'
+                      : 'bg-[var(--md-surface)] border-gray-100 dark:border-gray-700/50'
+                  } ${editing ? 'cursor-pointer active:scale-95' : ''}`}
+                >
+                  <span className={`md-label-l leading-none ${isRed ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>{day}</span>
+                  <span className={`md-body-l leading-none flex items-center justify-center h-5 ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
+                    {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
+                  </span>
+                </div>
+              )
+            })}
+            {Array.from({ length: calEndPad }, (_, i) => {
+              const colIdx = (calOffset + totalDays + i) % 7
+              return <div key={`e${i}`} className={`rounded-2xl min-h-[56px] ${colIdx >= 5 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}`} />
+            })}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const slideClass = slideDir === 'left' ? 'anim-slide-left' : 'anim-slide-right'
@@ -1042,7 +1135,7 @@ export default function ScheduleTable() {
                       </th>
                     )
                   })}
-                  {editing && <th className="border border-gray-600 px-1 py-2 text-center w-8"></th>}
+                  {editing && <th className="px-2 py-2 text-center w-10 font-medium text-gray-400 bg-gray-800 dark:bg-gray-950">ลบ</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1095,8 +1188,18 @@ export default function ScheduleTable() {
                             )
                           })}
                           {editing && (
-                            <td className="border border-gray-200 dark:border-gray-700 text-center">
-                              <button onClick={() => removeStaff(rowIdx)} className="text-red-500 dark:text-red-400 text-xs px-1 hover:text-red-700 transition-colors">✕</button>
+                            <td className="text-center px-2 bg-[var(--md-surface)]">
+                              <button
+                                onClick={() => removeStaff(rowIdx)}
+                                title={`ลบ ${member.name}`}
+                                aria-label={`ลบ ${member.name}`}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 hover:text-red-700 transition-colors"
+                              >
+                                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
+                                  <path d="M10 11v6M14 11v6" />
+                                </svg>
+                              </button>
                             </td>
                           )}
                         </tr>
@@ -1115,92 +1218,23 @@ export default function ScheduleTable() {
 
           {/* Mobile calendar cards */}
           <div className="md:hidden rounded-b-2xl space-y-4 pt-4">
+            {!editing && meName && (() => {
+              const meMember = mobileStaff.find(m => m.name === meName)
+              if (!meMember) return null
+              return (
+                <Fragment>
+                  <p className="md-title-s text-teal-700 dark:text-teal-300 px-1 pt-1 font-semibold">เวรของฉัน</p>
+                  {renderMobileCard(meMember, 0, true)}
+                </Fragment>
+              )
+            })()}
             {ROLES.map(role => {
               const group = mobileStaff.filter(m => m.role === role)
               if (!group.length) return null
               return (
                 <Fragment key={role}>
                   <p className="md-title-s text-[var(--md-on-surface-var)] px-1 pt-1">{ROLE_LABEL[role]} <span className="font-normal opacity-60">({group.length})</span></p>
-                  {group.map((member, gi) => {
-              const realIdx = staff.indexOf(member)
-              return (
-                <div
-                  key={realIdx}
-                  className="anim-fade-up rounded-2xl bg-[var(--md-surface)] md-elev-2 border border-gray-100 dark:border-gray-700/50 overflow-hidden transition-colors duration-300"
-                  style={{ animationDelay: `${gi * 55}ms` }}
-                >
-                  {/* Card header — 16dp padding */}
-                  <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-700/60">
-                    {editing ? (
-                      <div className="flex flex-wrap items-center gap-2 min-w-0">
-                        <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
-                        <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.phone ?? ''} placeholder="เบอร์โทร" inputMode="tel" onChange={e => patchStaff(realIdx, { phone: e.target.value || undefined })} />
-                        <select className="md-label-m border dark:border-gray-600 rounded-xl px-2 py-1.5 text-gray-500 dark:text-gray-400 bg-[var(--md-surface-variant)]" value={member.role} onChange={e => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
-                          {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-                        </select>
-                        <button onClick={() => removeStaff(realIdx)} className="text-red-400 hover:text-red-600 transition-colors w-8 h-8 flex items-center justify-center">✕</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 min-w-0">
-                        {member.phone ? (
-                          <a href={telHref(member.phone)} className="md-title-m text-teal-700 dark:text-teal-300 truncate flex items-center gap-1" title={`โทร ${member.phone}`}>
-                            <span className="truncate">{member.name}</span>
-                            <span className="text-sm shrink-0">📞</span>
-                          </a>
-                        ) : (
-                          <span className="md-title-m text-[var(--md-on-surface)] truncate">{member.name}</span>
-                        )}
-                        <span className="md-label-m px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 shrink-0">{ROLE_LABEL[member.role]}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Calendar grid — 16dp padding, 8dp gap */}
-                  <div className="p-4 bg-[var(--md-surface-variant)]/30">
-                    <div className="grid grid-cols-7 gap-2 mb-2">
-                      {['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'].map((d, ci) => (
-                        <div key={d} className={`md-label-s text-center py-1 ${ci >= 5 ? 'text-red-400 dark:text-red-500' : 'text-[var(--md-on-surface-var)]'}`}>{d}</div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-2">
-                      {Array.from({ length: calOffset }, (_, i) => (
-                        <div key={`s${i}`} className={`rounded-2xl min-h-[56px] ${i >= 5 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}`} />
-                      ))}
-                      {member.shifts.map((shift, dayIdx) => {
-                        const day = dayIdx + 1
-                        const colIdx = (calOffset + dayIdx) % 7
-                        const isWeekendCol = colIdx >= 5
-                        const holName = holidays[day]
-                        const isHoliday = (weekendDays.includes(day) || !!holName) && !isWeekendCol
-                        const isRed = isWeekendCol || isHoliday
-                        return (
-                          <div
-                            key={dayIdx}
-                            onMouseDown={editing ? addRipple : undefined}
-                            onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
-                            title={holName}
-                            className={`md-state flex flex-col items-center justify-between rounded-2xl border py-2 min-h-[56px] transition-all duration-150 ${
-                              isRed
-                                ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/60'
-                                : 'bg-[var(--md-surface)] border-gray-100 dark:border-gray-700/50'
-                            } ${editing ? 'cursor-pointer active:scale-95' : ''}`}
-                          >
-                            <span className={`md-label-l leading-none ${isRed ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>{day}</span>
-                            <span className={`md-body-l leading-none flex items-center justify-center h-5 ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
-                              {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
-                            </span>
-                          </div>
-                        )
-                      })}
-                      {Array.from({ length: calEndPad }, (_, i) => {
-                        const colIdx = (calOffset + totalDays + i) % 7
-                        return <div key={`e${i}`} className={`rounded-2xl min-h-[56px] ${colIdx >= 5 ? 'bg-red-50/60 dark:bg-red-950/20' : ''}`} />
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )
-                  })}
+                  {group.map((member, gi) => renderMobileCard(member, gi))}
                 </Fragment>
               )
             })}

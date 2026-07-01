@@ -2,12 +2,44 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { contactGroups } from '@/data/contacts'
+import { contactGroups, type ContactRole } from '@/data/contacts'
 
 const THEME_KEY = 'inr-schedule:theme'
 
+const ROLE_META: Record<ContactRole, { label: string; icon: string; avatar: string; badge: string }> = {
+  doctor: {
+    label: 'แพทย์', icon: '🩺',
+    avatar: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
+    badge: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
+  },
+  nurse: {
+    label: 'พยาบาล', icon: '💉',
+    avatar: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
+    badge: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
+  },
+  tech: {
+    label: 'นักเทคโน', icon: '🩻',
+    avatar: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+    badge: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
+  },
+  maid: {
+    label: 'แม่บ้าน', icon: '🧹',
+    avatar: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300',
+    badge: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300',
+  },
+}
+
+const ROLE_ORDER: ContactRole[] = ['doctor', 'nurse', 'tech', 'maid']
+const allContacts = contactGroups.flatMap(g => g.contacts)
+
 function telHref(phone: string) {
   return `tel:${phone.replace(/[^0-9+]/g, '')}`
+}
+
+// ตัด prefix (นพ. น.ส. นาย นาง) แล้วเอาตัวอักษรแรกของชื่อจริงเป็น avatar
+function initial(name: string) {
+  const stripped = name.replace(/^(นพ\.|พญ\.|น\.ส\.|นาย|นาง(สาว)?|ดร\.)\s*/, '')
+  return stripped.trim().charAt(0) || name.charAt(0)
 }
 
 export default function ContactPage() {
@@ -52,35 +84,43 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Contact groups */}
+        {/* Contact groups — จัดกลุ่มตาม role */}
         <div className="rounded-b-2xl space-y-6 pt-4 pb-4">
-          {contactGroups.map((group, gi) => (
-            <section key={gi} className="anim-fade-up" style={{ animationDelay: `${gi * 80}ms` }}>
-              <h2 className="md-title-m text-teal-700 dark:text-teal-300 font-semibold px-1 mb-3">
-                {group.title}
+          {ROLE_ORDER.map((roleKey, gi) => {
+            const list = allContacts.filter(c => c.role === roleKey)
+            if (!list.length) return null
+            const role = ROLE_META[roleKey]
+            return (
+            <section key={roleKey} className="anim-fade-up" style={{ animationDelay: `${gi * 80}ms` }}>
+              <h2 className="md-title-m text-teal-700 dark:text-teal-300 font-semibold px-1 mb-3 flex items-center gap-2">
+                <span>{role.icon}</span>
+                {role.label}
+                <span className="font-normal opacity-60">({list.length})</span>
               </h2>
               <div className="space-y-2.5">
-                {group.contacts.map((c, ci) => (
+                {list.map((c, ci) => (
                   <a
                     key={ci}
                     href={telHref(c.phone)}
                     className="md-state flex items-center justify-between gap-3 rounded-2xl bg-[var(--md-surface)] md-elev-1 border border-gray-100 dark:border-gray-700/50 px-4 py-3.5 transition-all duration-150 active:scale-[0.98] hover:md-elev-2"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="grid place-items-center w-9 h-9 shrink-0 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 md-label-l font-medium">
-                        {ci + 1}
+                      <span className={`relative grid place-items-center w-11 h-11 shrink-0 rounded-full md-title-m font-semibold ${role.avatar}`}>
+                        {initial(c.name)}
+                        <span className="absolute -bottom-1 -right-1 grid place-items-center w-5 h-5 rounded-full bg-[var(--md-surface)] text-[11px] leading-none">{role.icon}</span>
                       </span>
                       <span className="md-body-l text-[var(--md-on-surface)] truncate">{c.name}</span>
                     </div>
                     <span className="flex items-center gap-2 shrink-0 text-teal-700 dark:text-teal-300">
-                      <span className="md-body-m tabular-nums">{c.phone}</span>
+                      <span className="md-body-m tabular-nums hidden sm:inline">{c.phone}</span>
                       <span className="grid place-items-center w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/60 text-lg">📞</span>
                     </span>
                   </a>
                 ))}
               </div>
             </section>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
