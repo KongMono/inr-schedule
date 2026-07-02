@@ -66,6 +66,14 @@ function addRipple(e: React.MouseEvent<HTMLElement>) {
 }
 
 // ── MD3 Button components ────────────────────────────────────────
+function PhoneIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.07 9.81 19.79 19.79 0 0 1 1 1.18 2 2 0 0 1 2.92 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 15l.92 1.92z" />
+    </svg>
+  )
+}
+
 function BtnFilled({ children, onClick, className = '' }: {
   children: React.ReactNode; onClick?: () => void; className?: string
 }) {
@@ -314,7 +322,7 @@ function PersonCard({ m, accent, isMe = false }: { m: StaffMember; accent: strin
         <p className="md-label-s text-[var(--md-on-surface-var)]">{ROLE_LABEL[m.role]}</p>
       </div>
       {m.phone && (
-        <a href={telHref(m.phone)} title={`โทร ${m.phone}`} className="shrink-0 grid place-items-center w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 text-sm active:scale-90 transition-transform">📞</a>
+        <a href={telHref(m.phone)} title={`โทร ${m.phone}`} className="shrink-0 grid place-items-center w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 active:scale-90 transition-transform"><PhoneIcon /></a>
       )}
     </div>
   )
@@ -926,7 +934,7 @@ export default function ScheduleTable() {
               {member.phone ? (
                 <a href={telHref(member.phone)} className="md-title-m text-teal-700 dark:text-teal-300 truncate flex items-center gap-1" title={`โทร ${member.phone}`}>
                   <span className="truncate">{member.name}</span>
-                  <span className="text-sm shrink-0">📞</span>
+                  <PhoneIcon className="w-4 h-4 shrink-0" />
                 </a>
               ) : (
                 <span className="md-title-m text-[var(--md-on-surface)] truncate">{member.name}</span>
@@ -1082,7 +1090,7 @@ export default function ScheduleTable() {
 
           {/* บันทึก/แชร์ภาพ */}
           <div data-export-hide className="flex justify-center mt-3">
-            <BtnTonal onClick={exportImage}>{exporting ? 'กำลังบันทึก…' : '📷 บันทึก / แชร์ภาพ'}</BtnTonal>
+            <BtnTonal onClick={exportImage}>{exporting ? 'กำลังสร้างรูป…' : '📷 แชร์เป็นรูปภาพ'}</BtnTonal>
           </div>
 
           {/* Month nav — month view only */}
