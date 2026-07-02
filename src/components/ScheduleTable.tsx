@@ -285,10 +285,10 @@ function holidaysOf(month: number, gregYear: number): Record<number, string> {
 
 // กลุ่มเวรที่ "ทำงานวันนี้" เรียงตามความสำคัญ
 const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolean; dot: string; accent: string }[] = [
-  { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-500',   accent: 'border-l-blue-400 dark:border-l-blue-500' },
-  { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-500', accent: 'border-l-purple-400 dark:border-l-purple-500' },
-  { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-orange-500', accent: 'border-l-orange-500 dark:border-l-orange-400' },
-  { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-500', accent: 'border-l-orange-400 dark:border-l-orange-500' },
+  { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-600',   accent: 'border-l-blue-400 dark:border-l-blue-500' },
+  { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-600', accent: 'border-l-purple-400 dark:border-l-purple-500' },
+  { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-orange-700', accent: 'border-l-orange-500 dark:border-l-orange-400' },
+  { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-700', accent: 'border-l-orange-400 dark:border-l-orange-500' },
 ]
 
 // การ์ดชื่อคน — ชื่อ + ตำแหน่ง + ปุ่มโทร, มีแถบสีกลุ่มด้านซ้าย
@@ -334,7 +334,7 @@ function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: s
     <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl p-4 sm:p-6 space-y-4">
       {/* Date hero */}
       <div className={`rounded-2xl px-5 py-5 text-center ${isHoliday ? 'bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50' : 'bg-teal-50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/50'}`}>
-        <p className={`md-label-l ${isHoliday ? 'text-red-500 dark:text-red-400' : 'text-teal-600 dark:text-teal-400'}`}>
+        <p className={`md-label-l ${isHoliday ? 'text-red-600 dark:text-red-400' : 'text-teal-700 dark:text-teal-400'}`}>
           วัน{THAI_DAY_FULL[today.getDay()]}{holName ? ` · ${holName}` : isWeekendToday ? ' · วันหยุด' : ''}
         </p>
         <p className={`md-headline-m font-medium mt-0.5 ${isHoliday ? 'text-red-600 dark:text-red-400' : 'text-teal-700 dark:text-teal-300'}`}>
