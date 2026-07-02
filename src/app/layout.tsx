@@ -30,7 +30,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${roboto.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <main className="flex-1 flex flex-col">{children}</main>
+      </body>
     </html>
   );
 }

@@ -401,7 +401,7 @@ function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: s
           </summary>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {offToday.map((m, i) => (
-              <span key={i} className={`md-label-s px-2.5 py-1 rounded-full ${m.name === meName ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 ring-1 ring-teal-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'}`}>{m.name}{m.name === meName ? ' (ฉัน)' : ''}</span>
+              <span key={i} className={`md-label-s px-2.5 py-1 rounded-full ${m.name === meName ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 ring-1 ring-teal-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{m.name}{m.name === meName ? ' (ฉัน)' : ''}</span>
             ))}
           </div>
         </details>
@@ -459,7 +459,7 @@ function WeekView({ schedules, meName }: { schedules: ScheduleData[]; meName: st
                   <tr>
                     <td colSpan={8} className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-0">
                       <div className="sticky left-0 w-max px-2 py-1 md-label-m font-semibold text-[var(--md-on-surface-var)]">
-                        {ROLE_LABEL[role]} <span className="font-normal opacity-60">({rows.length})</span>
+                        {ROLE_LABEL[role]} <span className="font-normal">({rows.length})</span>
                       </div>
                     </td>
                   </tr>
@@ -903,9 +903,9 @@ export default function ScheduleTable() {
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 dark:border-gray-700/60">
           {editing ? (
             <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
-              <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.phone ?? ''} placeholder="เบอร์โทร" inputMode="tel" onChange={e => patchStaff(realIdx, { phone: e.target.value || undefined })} />
-              <select className="md-label-m border dark:border-gray-600 rounded-xl px-2 py-1.5 text-gray-500 dark:text-gray-400 bg-[var(--md-surface-variant)]" value={member.role} onChange={e => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
+              <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.name} placeholder="ชื่อ" aria-label="ชื่อ" onChange={e => patchStaff(realIdx, { name: e.target.value })} />
+              <input className="md-body-m border dark:border-gray-600 rounded-xl px-3 py-1.5 w-28 bg-[var(--md-surface-variant)] dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-teal-400" value={member.phone ?? ''} placeholder="เบอร์โทร" aria-label="เบอร์โทร" inputMode="tel" onChange={e => patchStaff(realIdx, { phone: e.target.value || undefined })} />
+              <select aria-label="ตำแหน่ง" className="md-label-m border dark:border-gray-600 rounded-xl px-2 py-1.5 text-gray-500 dark:text-gray-400 bg-[var(--md-surface-variant)]" value={member.role} onChange={e => patchStaff(realIdx, { role: e.target.value as StaffMember['role'] })}>
                 {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
               </select>
               <button onClick={() => removeStaff(realIdx)} className="text-red-400 hover:text-red-600 transition-colors w-8 h-8 flex items-center justify-center">✕</button>
@@ -1015,6 +1015,7 @@ export default function ScheduleTable() {
                 </h1>
                 {editing ? (
                   <input
+                    aria-label="ชื่อหน่วยงาน"
                     className="anim-header-3 mt-2 md-body-m text-[var(--md-on-surface-var)] bg-transparent text-center border-b border-gray-300 dark:border-gray-600 focus:border-teal-500 focus:outline-none w-full max-w-xs px-1 py-0.5 transition-colors"
                     value={department}
                     onChange={e => updateCurrent(m => ({ ...m, department: e.target.value }))}
@@ -1055,6 +1056,7 @@ export default function ScheduleTable() {
               <span className="absolute left-3 pointer-events-none text-sm">👤</span>
               <select
                 value={meName ?? ''}
+                aria-label="เลือกเวรของฉัน"
                 onChange={e => setMe(e.target.value || null)}
                 className={`md-label-m appearance-none h-9 pl-9 pr-8 rounded-full border bg-[var(--md-surface)] focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors ${meName ? 'border-teal-400 dark:border-teal-600 text-teal-700 dark:text-teal-300 font-medium' : 'border-gray-300 dark:border-gray-600 text-[var(--md-on-surface-var)]'}`}
               >
@@ -1082,6 +1084,7 @@ export default function ScheduleTable() {
               <span className="relative inline-flex items-center">
                 <select
                   value={selMonth}
+                  aria-label="เลือกเดือน"
                   onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelMonth(Number(e.target.value)) }}
                   className="md-label-l appearance-none h-10 pl-4 pr-8 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-[var(--md-on-surface)] focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
                 >
@@ -1094,6 +1097,7 @@ export default function ScheduleTable() {
               <input
                 type="number"
                 value={selYear}
+                aria-label="ปี พ.ศ."
                 onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelYear(Number(e.target.value)) }}
                 className="md-label-l h-10 px-3 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-[var(--md-on-surface)] w-20 text-center focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
               />
@@ -1184,7 +1188,7 @@ export default function ScheduleTable() {
                     <tr>
                       <td colSpan={monthColSpan} className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-0">
                         <div className="sticky left-0 w-max px-3 py-1.5 md-label-m font-semibold text-[var(--md-on-surface-var)]">
-                          {ROLE_LABEL[role]} <span className="font-normal opacity-60">({rows.length})</span>
+                          {ROLE_LABEL[role]} <span className="font-normal">({rows.length})</span>
                         </div>
                       </td>
                     </tr>
@@ -1198,9 +1202,9 @@ export default function ScheduleTable() {
                           <td className={`border border-gray-200 dark:border-gray-700 px-1 py-1.5 sticky left-8 z-10 ${bg} ${meEdge} ${editing ? '' : `font-medium whitespace-nowrap ${isMe ? 'text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}`}>
                             {editing ? (
                               <div className="flex flex-col gap-0.5">
-                                <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-xs bg-white dark:bg-gray-700 dark:text-gray-200" value={member.name} placeholder="ชื่อ" onChange={e => patchStaff(rowIdx, { name: e.target.value })} />
-                                <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] bg-white dark:bg-gray-700 dark:text-gray-200" value={member.phone ?? ''} placeholder="เบอร์โทร" onChange={e => patchStaff(rowIdx, { phone: e.target.value || undefined })} />
-                                <select className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700" value={member.role} onChange={e => patchStaff(rowIdx, { role: e.target.value as StaffMember['role'] })}>
+                                <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-xs bg-white dark:bg-gray-700 dark:text-gray-200" value={member.name} placeholder="ชื่อ" aria-label="ชื่อ" onChange={e => patchStaff(rowIdx, { name: e.target.value })} />
+                                <input className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] bg-white dark:bg-gray-700 dark:text-gray-200" value={member.phone ?? ''} placeholder="เบอร์โทร" aria-label="เบอร์โทร" onChange={e => patchStaff(rowIdx, { phone: e.target.value || undefined })} />
+                                <select aria-label="ตำแหน่ง" className="border dark:border-gray-600 rounded-lg px-1 py-0.5 w-24 text-[10px] text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700" value={member.role} onChange={e => patchStaff(rowIdx, { role: e.target.value as StaffMember['role'] })}>
                                   {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                                 </select>
                               </div>
@@ -1273,7 +1277,7 @@ export default function ScheduleTable() {
               if (!group.length) return null
               return (
                 <Fragment key={role}>
-                  <p className="md-title-s text-[var(--md-on-surface-var)] px-1 pt-1">{ROLE_LABEL[role]} <span className="font-normal opacity-60">({group.length})</span></p>
+                  <p className="md-title-s text-[var(--md-on-surface-var)] px-1 pt-1">{ROLE_LABEL[role]} <span className="font-normal">({group.length})</span></p>
                   {group.map((member, gi) => renderMobileCard(member, gi))}
                 </Fragment>
               )
@@ -1334,6 +1338,7 @@ function PinModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (pin
         <input
           type="password"
           inputMode="numeric"
+          aria-label="PIN"
           autoFocus
           value={pin}
           onChange={e => { setPin(e.target.value); setErr(false) }}

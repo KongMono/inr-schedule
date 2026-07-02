@@ -98,7 +98,7 @@ export default function ContactPage() {
               <h2 className="md-label-m uppercase text-[var(--md-on-surface-var)] px-4 mb-2 flex items-center gap-1.5">
                 <span>{role.icon}</span>
                 {role.label}
-                <span className="opacity-60">({list.length})</span>
+                <span>({list.length})</span>
               </h2>
               {/* Inset grouped card — rows separated by hairline dividers */}
               <div className="rounded-2xl bg-[var(--md-surface)] md-elev-1 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/60">
