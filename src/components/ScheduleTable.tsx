@@ -322,7 +322,7 @@ function PersonCard({ m, accent, isMe = false }: { m: StaffMember; accent: strin
         <p className="md-label-s text-[var(--md-on-surface-var)]">{ROLE_LABEL[m.role]}</p>
       </div>
       {m.phone && (
-        <a href={telHref(m.phone)} title={`โทร ${m.phone}`} className="shrink-0 grid place-items-center w-9 h-9 rounded-full bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 active:scale-90 transition-transform"><PhoneIcon /></a>
+        <a href={telHref(m.phone)} title={`โทร ${m.phone}`} className="shrink-0 grid place-items-center w-9 h-9 rounded-full bg-teal-100 dark:bg-teal-500 text-teal-700 dark:text-white active:scale-90 transition-transform"><PhoneIcon /></a>
       )}
     </div>
   )
