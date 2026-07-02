@@ -66,11 +66,11 @@ export default function ContactPage() {
       <div className="max-w-2xl mx-auto">
 
         {/* Top app bar */}
-        <div className="relative bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-6 sm:px-6 sm:py-7 transition-colors duration-300">
+        <div className="relative bg-[var(--md-surface)] md-elev-1 rounded-2xl px-4 py-6 sm:px-6 sm:py-7 transition-colors duration-300">
           <div className="absolute top-4 left-4 z-10">
             <Link
               href="/"
-              className="md-state md-label-l inline-flex items-center gap-1 h-10 px-4 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 transition-all duration-200 active:scale-95"
+              className="md-label-l inline-flex items-center gap-1 h-10 px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
             >
               ‹ ตารางเวร
             </Link>
@@ -94,29 +94,34 @@ export default function ContactPage() {
             const role = ROLE_META[roleKey]
             return (
             <section key={roleKey} className="anim-fade-up" style={{ animationDelay: `${gi * 80}ms` }}>
-              <h2 className="md-title-m text-teal-700 dark:text-teal-300 font-semibold px-1 mb-3 flex items-center gap-2">
+              {/* iOS grouped-list section header */}
+              <h2 className="md-label-m uppercase text-[var(--md-on-surface-var)] px-4 mb-2 flex items-center gap-1.5">
                 <span>{role.icon}</span>
                 {role.label}
-                <span className="font-normal opacity-60">({list.length})</span>
+                <span className="opacity-60">({list.length})</span>
               </h2>
-              <div className="space-y-2.5">
+              {/* Inset grouped card — rows separated by hairline dividers */}
+              <div className="rounded-2xl bg-[var(--md-surface)] md-elev-1 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/60">
                 {list.map((c, ci) => (
                   <a
                     key={ci}
                     href={telHref(c.phone)}
-                    className="md-state flex items-center justify-between gap-3 rounded-2xl bg-[var(--md-surface)] md-elev-1 border border-gray-100 dark:border-gray-700/50 px-4 py-3.5 transition-all duration-150 active:scale-[0.98] hover:md-elev-2"
+                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors duration-100 active:bg-gray-100 dark:active:bg-gray-700/40"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className={`relative grid place-items-center w-11 h-11 shrink-0 rounded-full md-title-m font-semibold ${role.avatar}`}>
+                      <span className={`relative grid place-items-center w-11 h-11 shrink-0 rounded-full md-title-m ${role.avatar}`}>
                         {initial(c.name)}
                         <span className="absolute -bottom-1 -right-1 grid place-items-center w-5 h-5 rounded-full bg-[var(--md-surface)] text-[11px] leading-none">{role.icon}</span>
                       </span>
-                      <span className="md-body-l text-[var(--md-on-surface)] truncate">{c.name}</span>
+                      <div className="min-w-0">
+                        <span className="md-body-l text-[var(--md-on-surface)] truncate block">{c.name}</span>
+                        <span className="md-body-s text-[var(--md-on-surface-var)] tabular-nums sm:hidden">{c.phone}</span>
+                      </div>
                     </div>
                     <span className="flex items-center gap-2 shrink-0 text-teal-700 dark:text-teal-300">
-                      <span className="md-body-m tabular-nums hidden sm:inline">{c.phone}</span>
-                      <span className="grid place-items-center w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-500 text-teal-700 dark:text-white">
-                        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.07 9.81 19.79 19.79 0 0 1 1 1.18 2 2 0 0 1 2.92 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 15l.92 1.92z" /></svg>
+                      <span className="md-body-m tabular-nums hidden sm:inline text-[var(--md-on-surface-var)]">{c.phone}</span>
+                      <span className="grid place-items-center w-9 h-9 rounded-full bg-teal-600/10 dark:bg-teal-500 text-teal-600 dark:text-white">
+                        <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.07 9.81 19.79 19.79 0 0 1 1 1.18 2 2 0 0 1 2.92 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 15l.92 1.92z" /></svg>
                       </span>
                     </span>
                   </a>

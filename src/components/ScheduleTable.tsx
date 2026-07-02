@@ -53,19 +53,7 @@ function byDate(a: ScheduleData, b: ScheduleData) {
   return a.thaiYear - b.thaiYear || a.month - b.month
 }
 
-// ── Ripple helper ────────────────────────────────────────────────
-function addRipple(e: React.MouseEvent<HTMLElement>) {
-  const el = e.currentTarget
-  const dot = document.createElement('span')
-  dot.className = 'md-ripple-dot'
-  const rect = el.getBoundingClientRect()
-  dot.style.left = `${e.clientX - rect.left}px`
-  dot.style.top  = `${e.clientY - rect.top}px`
-  el.appendChild(dot)
-  dot.addEventListener('animationend', () => dot.remove())
-}
-
-// ── MD3 Button components ────────────────────────────────────────
+// ── Button components (iOS-style: tinted pills, press = dim + scale) ──
 function PhoneIcon({ className = 'w-5 h-5' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -80,8 +68,7 @@ function BtnFilled({ children, onClick, className = '' }: {
   return (
     <button
       onClick={onClick}
-      onMouseDown={addRipple}
-      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full bg-teal-700 dark:bg-teal-600 text-white shadow-sm transition-all duration-200 hover:shadow-md active:scale-95 ${className}`}
+      className={`md-label-l inline-flex items-center gap-2 h-10 px-6 rounded-full bg-teal-600 dark:bg-teal-500 text-white transition-all duration-150 active:opacity-70 active:scale-[0.97] ${className}`}
     >
       {children}
     </button>
@@ -94,8 +81,7 @@ function BtnTonal({ children, onClick, className = '' }: {
   return (
     <button
       onClick={onClick}
-      onMouseDown={addRipple}
-      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 transition-all duration-200 active:scale-95 ${className}`}
+      className={`md-label-l inline-flex items-center gap-2 h-10 px-6 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97] ${className}`}
     >
       {children}
     </button>
@@ -106,13 +92,12 @@ function BtnOutlined({ children, onClick, className = '', danger = false }: {
   children: React.ReactNode; onClick?: () => void; className?: string; danger?: boolean
 }) {
   const colors = danger
-    ? 'border-red-300 dark:border-red-800 text-red-600 dark:text-red-400'
-    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+    ? 'bg-red-500/10 dark:bg-red-400/15 text-red-600 dark:text-red-400'
+    : 'bg-gray-500/10 dark:bg-gray-400/15 text-gray-600 dark:text-gray-300'
   return (
     <button
       onClick={onClick}
-      onMouseDown={addRipple}
-      className={`md-state md-label-l relative overflow-hidden inline-flex items-center gap-2 h-10 px-6 rounded-full border transition-all duration-200 active:scale-95 ${colors} ${className}`}
+      className={`md-label-l inline-flex items-center gap-2 h-10 px-6 rounded-full transition-all duration-150 active:opacity-70 active:scale-[0.97] ${colors} ${className}`}
     >
       {children}
     </button>
@@ -125,12 +110,11 @@ function BtnIcon({ children, onClick, title = '', active = false }: {
   return (
     <button
       onClick={onClick}
-      onMouseDown={addRipple}
       title={title}
-      className={`md-state relative overflow-hidden w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all duration-200 active:scale-90 ${
+      className={`w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none transition-all duration-150 active:opacity-60 active:scale-90 ${
         active
-          ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300'
-          : 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+          ? 'bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300'
+          : 'bg-gray-500/10 dark:bg-gray-400/15 text-teal-600 dark:text-teal-400'
       }`}
     >
       {children}
@@ -138,7 +122,7 @@ function BtnIcon({ children, onClick, title = '', active = false }: {
   )
 }
 
-// ── MD3 Theme Toggle Switch ──────────────────────────────────────
+// ── Theme Toggle Switch (iOS-style) ──────────────────────────────
 function ThemeSwitch({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
   return (
     <button
@@ -150,18 +134,15 @@ function ThemeSwitch({ dark, onToggle }: { dark: boolean; onToggle: () => void }
       className="relative flex items-center cursor-pointer select-none focus:outline-none group p-3 -m-3"
     >
       {/* Track */}
-      <span className={`relative inline-flex items-center w-14 h-8 rounded-full transition-colors duration-300 ease-in-out border-2 ${
-        dark
-          ? 'bg-teal-600 border-teal-600'
-          : 'bg-gray-200 dark:bg-gray-600 border-gray-300 dark:border-gray-500'
+      <span className={`relative inline-flex items-center w-[51px] h-[31px] rounded-full transition-colors duration-300 ease-out ${
+        dark ? 'bg-teal-500' : 'bg-[#E9E9EB]'
       } group-focus-visible:ring-2 group-focus-visible:ring-teal-400 group-focus-visible:ring-offset-2`}>
         {/* Thumb */}
-        <span className={`absolute flex items-center justify-center rounded-full shadow-md transition-all duration-300 ease-in-out ${
-          dark
-            ? 'w-7 h-7 left-[calc(100%-1.875rem)] bg-white text-teal-600'
-            : 'w-5 h-5 left-[3px] bg-white text-gray-500'
-        }`}>
-          <span className={`transition-all duration-300 leading-none ${dark ? 'text-sm' : 'text-xs'}`}>
+        <span
+          className="absolute flex items-center justify-center w-[27px] h-[27px] rounded-full bg-white shadow-[0_3px_8px_rgba(0,0,0,0.15),0_1px_1px_rgba(0,0,0,0.16)] transition-all duration-300 ease-out"
+          style={{ left: dark ? 22 : 2 }}
+        >
+          <span className={`text-xs leading-none transition-colors duration-300 ${dark ? 'text-teal-600' : 'text-gray-400'}`}>
             {dark ? '☀' : '☾'}
           </span>
         </span>
@@ -880,7 +861,7 @@ export default function ScheduleTable() {
       const dataUrl = await toPng(node, {
         pixelRatio: 2,
         width: node.scrollWidth,
-        backgroundColor: dark ? '#111827' : '#F3F4F6',
+        backgroundColor: dark ? '#000000' : '#F2F2F7',
       })
       const label = view === 'month'
         ? `${THAI_MONTHS[selMonth]}-${selYear}`
@@ -966,7 +947,6 @@ export default function ScheduleTable() {
               return (
                 <div
                   key={dayIdx}
-                  onMouseDown={editing ? addRipple : undefined}
                   onClick={editing ? () => cycleCell(realIdx, dayIdx) : undefined}
                   onMouseEnter={holName && !editing ? e => showHolTip(e, holName) : undefined}
                   onMouseLeave={holName && !editing ? hideHolTip : undefined}
@@ -1010,7 +990,7 @@ export default function ScheduleTable() {
             <Link
               href="/contact"
               title="ข้อมูลติดต่อ"
-              className="md-state md-label-l inline-flex items-center gap-1 h-10 px-4 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 transition-all duration-200 active:scale-95"
+              className="md-label-l inline-flex items-center gap-1 h-10 px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
             >
               📞 ติดต่อ
             </Link>
@@ -1053,15 +1033,15 @@ export default function ScheduleTable() {
             )}
           </div>
 
-          {/* View tabs — segmented control */}
+          {/* View tabs — iOS segmented control */}
           <div data-export-hide className="anim-header-4 flex justify-center mt-5">
-            <div className="flex w-full max-w-sm gap-1 p-1 rounded-full bg-[var(--md-surface-variant)] dark:bg-gray-800">
+            <div className="flex w-full max-w-sm gap-0.5 p-0.5 rounded-[10px] bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24]">
               {([['today', 'วันนี้'], ['week', 'สัปดาห์นี้'], ['month', 'เดือนนี้']] as const).map(([v, label]) => (
                 <button
                   key={v}
                   style={{ touchAction: 'manipulation' }}
                   onClick={() => switchView(v)}
-                  className={`md-label-l flex-1 py-2.5 rounded-full transition-all duration-200 active:scale-95 ${view === v ? 'bg-teal-600 dark:bg-teal-700 text-white shadow-sm' : 'text-[var(--md-on-surface-var)]'}`}
+                  className={`md-label-l flex-1 py-2 rounded-[8px] transition-all duration-200 ${view === v ? 'bg-white dark:bg-[#636366] text-[var(--md-on-surface)] shadow-[0_1px_4px_rgba(0,0,0,0.12)] font-semibold' : 'text-[var(--md-on-surface-var)] active:opacity-60'}`}
                 >
                   {label}
                 </button>
@@ -1096,23 +1076,30 @@ export default function ScheduleTable() {
           {/* Month nav — month view only */}
           {view === 'month' && (
             <div data-export-hide className="flex flex-wrap justify-center items-center gap-2 mt-4">
-              <BtnIcon onClick={() => stepMonth(-1)}>‹</BtnIcon>
-              <select
-                value={selMonth}
-                onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelMonth(Number(e.target.value)) }}
-                className="md-label-l border border-gray-300 dark:border-gray-600 rounded-full h-10 px-4 text-[var(--md-on-surface)] bg-[var(--md-surface)] focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                  <option key={m} value={m}>{THAI_MONTHS[m]}</option>
-                ))}
-              </select>
+              <BtnIcon onClick={() => stepMonth(-1)}>
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </BtnIcon>
+              <span className="relative inline-flex items-center">
+                <select
+                  value={selMonth}
+                  onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelMonth(Number(e.target.value)) }}
+                  className="md-label-l appearance-none h-10 pl-4 pr-8 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-[var(--md-on-surface)] focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>{THAI_MONTHS[m]}</option>
+                  ))}
+                </select>
+                <span className="absolute right-3 pointer-events-none text-[var(--md-on-surface-var)] text-[10px]">▼</span>
+              </span>
               <input
                 type="number"
                 value={selYear}
                 onChange={e => { setSlideDir('left'); setContentKey(k => k + 1); setSelYear(Number(e.target.value)) }}
-                className="md-label-l border border-gray-300 dark:border-gray-600 rounded-full h-10 px-3 text-[var(--md-on-surface)] bg-[var(--md-surface)] w-20 text-center focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
+                className="md-label-l h-10 px-3 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-[var(--md-on-surface)] w-20 text-center focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors"
               />
-              <BtnIcon onClick={() => stepMonth(1)}>›</BtnIcon>
+              <BtnIcon onClick={() => stepMonth(1)}>
+                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+              </BtnIcon>
 
               {/* Edit — month view only */}
               {view === 'month' && (
