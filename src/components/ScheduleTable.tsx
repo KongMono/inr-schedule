@@ -310,25 +310,60 @@ function PersonCard({ m, accent, isMe = false }: { m: StaffMember; accent: strin
 }
 
 // ── Today View — "who's on duty" board ───────────────────────────
+// เวรหนึ่งวันคุมยาวถึง 08:00 เช้าวันถัดไป — ก่อน 8 โมงเช้าจึงยังนับ
+// "เวรตอนนี้" เป็นของเมื่อวาน และแสดงเวรวันถัดไปต่อท้ายเสมอ
 function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: string | null }) {
-  const today = new Date()
+  const now = new Date()
+  const today = now
   const month = today.getMonth() + 1
   const thaiYear = today.getFullYear() + 543
-  const dayIdx = today.getDate() - 1
-  const data = schedules.find(m => m.month === month && m.thaiYear === thaiYear)
+  const isBefore8 = now.getHours() < 8
+  const activeDate = new Date(now)
+  if (isBefore8) activeDate.setDate(activeDate.getDate() - 1)
+  const nextDate = new Date(activeDate)
+  nextDate.setDate(nextDate.getDate() + 1)
+
+  const dataFor = (d: Date) => schedules.find(m => m.month === d.getMonth() + 1 && m.thaiYear === d.getFullYear() + 543)
+  const data = dataFor(today)
   const holName = holidaysOf(month, today.getFullYear())[today.getDate()]
   const isWeekendToday = data ? data.weekendDays.includes(today.getDate()) : (today.getDay() === 0 || today.getDay() === 6)
   const isHoliday = !!holName || isWeekendToday
 
-  const named = data?.staff.filter(m => m.name) ?? []
-  const shiftOf = (m: StaffMember): ShiftCode => m.shifts[dayIdx] ?? '-'
-  const offToday = named.filter(m => !isWorking(shiftOf(m)))
-  const anyWorking = named.some(m => isWorking(shiftOf(m)))
-
-  // "เวรของฉัน"
-  const me = meName ? named.find(m => m.name === meName) : undefined
-  const myShift = me ? shiftOf(me) : '-'
+  // "เวรของฉัน" — ยึดเวรที่กำลังคุมอยู่ (activeDate)
+  const activeNamed = dataFor(activeDate)?.staff.filter(m => m.name) ?? []
+  const me = meName ? activeNamed.find(m => m.name === meName) : undefined
+  const myShift: ShiftCode = me ? (me.shifts[activeDate.getDate() - 1] ?? '-') : '-'
   const myCounts = me ? shiftCounts(me) : null
+
+  const thDate = (d: Date) => `${d.getDate()} ${THAI_MONTHS[d.getMonth() + 1]}`
+
+  // บอร์ดรายชื่อคนอยู่เวรของวันหนึ่ง (ใช้ทั้งบล็อก "ตอนนี้" และ "ถัดไป")
+  const dutyBoard = (d: Date) => {
+    const dd = dataFor(d)
+    const named = dd?.staff.filter(m => m.name) ?? []
+    const shiftOf = (m: StaffMember): ShiftCode => m.shifts[d.getDate() - 1] ?? '-'
+    if (!dd) return <p className="text-center text-[var(--md-on-surface-var)] py-4 md-body-m">ไม่มีข้อมูลเดือนนี้</p>
+    if (!named.some(m => isWorking(shiftOf(m)))) return <p className="text-center text-[var(--md-on-surface-var)] py-4 md-body-m">ยังไม่มีเวรวันนี้</p>
+    return DUTY_GROUPS.map(g => {
+      const people = named.filter(m => g.match(shiftOf(m)))
+      if (!people.length) return null
+      return (
+        <section key={g.label} className="anim-fade-up">
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className={`grid place-items-center w-7 h-7 rounded-full text-white text-xs font-bold shrink-0 ${g.dot}`}>{g.sym}</span>
+            <span className="md-title-s text-[var(--md-on-surface)]">{g.label}</span>
+            <span className="md-label-m px-2 py-0.5 rounded-full bg-[var(--md-surface-variant)] text-[var(--md-on-surface-var)]">{people.length}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {people.map((m, i) => <PersonCard key={i} m={m} accent={g.accent} isMe={!!meName && m.name === meName} />)}
+          </div>
+        </section>
+      )
+    })
+  }
+
+  // คนไม่อยู่เวรของวันที่กำลังคุมอยู่
+  const offNow = activeNamed.filter(m => !isWorking(m.shifts[activeDate.getDate() - 1] ?? '-'))
 
   return (
     <div className="bg-[var(--md-surface)] md-elev-1 rounded-b-2xl p-4 sm:p-6 space-y-4">
@@ -350,7 +385,7 @@ function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: s
               <span className="shrink-0">👤</span><span className="truncate">{me.name}</span>
             </span>
             <span className={`md-label-l shrink-0 px-3 py-1 rounded-full font-medium ${isWorking(myShift) ? 'bg-teal-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
-              {isWorking(myShift) ? `${SHIFT_DISPLAY[myShift]} ${SHIFT_LABELS[myShift]}` : myShift === 'A' ? 'ไม่อยู่เวร' : 'ไม่มีเวร'}
+              {isWorking(myShift) ? `${SHIFT_DISPLAY[myShift]} ${SHIFT_LABELS[myShift]}${isBefore8 ? ' · ถึง 08:00' : ''}` : myShift === 'A' ? 'ไม่อยู่เวร' : 'ไม่มีเวร'}
             </span>
           </div>
           {myCounts && (
@@ -369,43 +404,47 @@ function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: s
         </div>
       )}
 
-      {!data ? (
-        <p className="text-center text-[var(--md-on-surface-var)] py-6">ไม่มีข้อมูลเดือนนี้</p>
-      ) : !anyWorking ? (
-        <p className="text-center text-[var(--md-on-surface-var)] py-6">ยังไม่มีเวรวันนี้</p>
-      ) : (
-        DUTY_GROUPS.map(g => {
-          const people = named.filter(m => g.match(shiftOf(m)))
-          if (!people.length) return null
-          return (
-            <section key={g.label} className="anim-fade-up">
-              <div className="flex items-center gap-2 mb-2.5">
-                <span className={`grid place-items-center w-7 h-7 rounded-full text-white text-xs font-bold shrink-0 ${g.dot}`}>{g.sym}</span>
-                <span className="md-title-s text-[var(--md-on-surface)]">{g.label}</span>
-                <span className="md-label-m px-2 py-0.5 rounded-full bg-[var(--md-surface-variant)] text-[var(--md-on-surface-var)]">{people.length}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {people.map((m, i) => <PersonCard key={i} m={m} accent={g.accent} isMe={!!meName && m.name === meName} />)}
-              </div>
-            </section>
-          )
-        })
-      )}
+      {/* ── เวรตอนนี้ (คุมถึง 08:00 เช้าวันถัดไป) ── */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500" />
+          </span>
+          <span className="md-title-m text-[var(--md-on-surface)]">เวรตอนนี้</span>
+          <span className="md-label-s px-2 py-0.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300">
+            {isBefore8 ? `ของเมื่อวาน (${thDate(activeDate)}) · ถึง 08:00 น.` : `${thDate(activeDate)} · ถึง 08:00 น. พรุ่งนี้`}
+          </span>
+        </div>
+        {dutyBoard(activeDate)}
 
-      {/* Off today — muted chips */}
-      {data && offToday.length > 0 && (
-        <details className="group">
-          <summary className="md-label-m text-[var(--md-on-surface-var)] cursor-pointer select-none list-none flex items-center gap-1 pt-1">
-            <span className="transition-transform group-open:rotate-90">›</span>
-            ไม่อยู่เวรวันนี้ ({offToday.length})
-          </summary>
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {offToday.map((m, i) => (
-              <span key={i} className={`md-label-s px-2.5 py-1 rounded-full ${m.name === meName ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 ring-1 ring-teal-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{m.name}{m.name === meName ? ' (ฉัน)' : ''}</span>
-            ))}
-          </div>
-        </details>
-      )}
+        {/* ไม่อยู่เวร — ของวันที่กำลังคุมอยู่ */}
+        {offNow.length > 0 && (
+          <details className="group">
+            <summary className="md-label-m text-[var(--md-on-surface-var)] cursor-pointer select-none list-none flex items-center gap-1 pt-1">
+              <span className="transition-transform group-open:rotate-90">›</span>
+              ไม่อยู่เวร ({offNow.length})
+            </summary>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {offNow.map((m, i) => (
+                <span key={i} className={`md-label-s px-2.5 py-1 rounded-full ${m.name === meName ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 ring-1 ring-teal-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{m.name}{m.name === meName ? ' (ฉัน)' : ''}</span>
+              ))}
+            </div>
+          </details>
+        )}
+      </section>
+
+      {/* ── เวรถัดไป (เริ่ม 08:00) ── */}
+      <section className="rounded-2xl bg-[var(--md-surface-variant)]/60 dark:bg-[var(--md-surface-variant)]/40 p-4 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm leading-none">⏭️</span>
+          <span className="md-title-m text-[var(--md-on-surface)]">เวรถัดไป</span>
+          <span className="md-label-s px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-[var(--md-on-surface-var)]">
+            {isBefore8 ? `วันนี้ (${thDate(nextDate)})` : `พรุ่งนี้ (${thDate(nextDate)})`} · เริ่ม 08:00 น.
+          </span>
+        </div>
+        {dutyBoard(nextDate)}
+      </section>
     </div>
   )
 }
