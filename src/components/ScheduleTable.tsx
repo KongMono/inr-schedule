@@ -286,8 +286,8 @@ function holidaysOf(month: number, gregYear: number): Record<number, string> {
 // กลุ่มเวรที่ "ทำงานวันนี้" เรียงตามความสำคัญ
 const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolean; dot: string; accent: string }[] = [
   { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-600',   accent: 'border-l-blue-400 dark:border-l-blue-500' },
-  { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-600', accent: 'border-l-purple-400 dark:border-l-purple-500' },
   { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-orange-700', accent: 'border-l-orange-500 dark:border-l-orange-400' },
+  { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-600', accent: 'border-l-purple-400 dark:border-l-purple-500' },
   { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-700', accent: 'border-l-orange-400 dark:border-l-orange-500' },
 ]
 
