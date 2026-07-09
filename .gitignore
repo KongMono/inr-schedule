@@ -42,3 +42,10 @@ next-env.d.ts
 
 # Serena tool cache
 .serena/
+
+# AI harness configs & skills (local only)
+.agents/
+.claude/
+.codex/
+.cursor/
+.gemini/
