@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-09T00:00:00Z",
+  "title": "Design System: INR Schedule",
+  "extensions": {
+    "colorMeta": {
+      "scrub-teal": { "role": "primary", "displayName": "Scrub Teal", "canonical": "#0D9488", "tonalRamp": ["oklch(25% 0.06 180)", "oklch(35% 0.08 180)", "oklch(45% 0.10 180)", "oklch(55% 0.11 180)", "oklch(65% 0.11 180)", "oklch(75% 0.09 180)", "oklch(87% 0.06 180)", "oklch(95% 0.03 180)"] },
+      "cyan-accent": { "role": "secondary", "displayName": "Cyan Accent", "canonical": "#06B6D4", "tonalRamp": ["oklch(25% 0.06 215)", "oklch(35% 0.09 215)", "oklch(45% 0.11 215)", "oklch(55% 0.12 215)", "oklch(65% 0.12 215)", "oklch(75% 0.10 215)", "oklch(87% 0.06 215)", "oklch(95% 0.03 215)"] },
+      "grouped-bg": { "role": "neutral", "displayName": "Grouped Background", "canonical": "#F2F2F7", "tonalRamp": ["oklch(15% 0.005 280)", "oklch(28% 0.005 280)", "oklch(42% 0.005 280)", "oklch(55% 0.005 280)", "oklch(68% 0.005 280)", "oklch(80% 0.005 280)", "oklch(90% 0.005 280)", "oklch(96% 0.005 280)"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#1C1C1E" },
+      "ink-secondary": { "role": "neutral", "displayName": "Ink Secondary", "canonical": "#6C6C70" },
+      "alert-red": { "role": "error", "displayName": "Alert Red", "canonical": "#FF3B30", "tonalRamp": ["oklch(25% 0.10 27)", "oklch(35% 0.15 27)", "oklch(45% 0.19 27)", "oklch(55% 0.21 27)", "oklch(63% 0.22 27)", "oklch(73% 0.16 27)", "oklch(86% 0.08 27)", "oklch(95% 0.03 27)"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Month title and page header; 700 weight, tight tracking." },
+      "title": { "displayName": "Title", "purpose": "Section headers, day numbers, staff names." },
+      "body": { "displayName": "Body", "purpose": "Schedule content, phone numbers." },
+      "label": { "displayName": "Label", "purpose": "Chips, badges, shift codes, counts." }
+    },
+    "shadows": [
+      { "name": "elev-1", "value": "0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06)", "purpose": "Resting cards, main schedule surface." },
+      { "name": "elev-2", "value": "0 2px 4px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.08)", "purpose": "Staff edit cards, pinned rows." },
+      { "name": "elev-3", "value": "0 4px 8px rgba(0,0,0,.08), 0 16px 40px rgba(0,0,0,.14)", "purpose": "Dialogs and overlays only." }
+    ],
+    "motion": [
+      { "name": "ease-emphasized", "value": "cubic-bezier(0.05, 0.7, 0.1, 1)", "purpose": "Entrances: fade-up 350ms, slide 280ms, scale-in 250ms." },
+      { "name": "ease-pop", "value": "cubic-bezier(0.34, 1.56, 0.64, 1)", "purpose": "Month title pop on change, 320ms." },
+      { "name": "press", "value": "150ms ease", "purpose": "active:scale(0.97) + opacity 0.7 on all pressables." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Filled pill for the main action (save, unlock edit).",
+      "html": "<button class=\"ds-btn-primary\">บันทึก</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 24px; border: none; border-radius: 9999px; background: var(--md-primary, #0D9488); color: #fff; font-size: 0.875rem; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, sans-serif; transition: all 150ms; cursor: pointer; } .ds-btn-primary:active { opacity: 0.7; transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: 2px solid #2DD4BF; outline-offset: 2px; }"
+    },
+    {
+      "name": "Tonal Button",
+      "kind": "button",
+      "refersTo": "button-tonal",
+      "description": "Soft teal-tint pill for secondary actions (month nav, share).",
+      "html": "<button class=\"ds-btn-tonal\">เดือนถัดไป</button>",
+      "css": ".ds-btn-tonal { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 24px; border: none; border-radius: 9999px; background: rgba(13,148,136,0.10); color: #0F766E; font-size: 0.875rem; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, sans-serif; transition: all 150ms; cursor: pointer; } .ds-btn-tonal:active { opacity: 0.7; transform: scale(0.97); }"
+    },
+    {
+      "name": "Outlined Button",
+      "kind": "button",
+      "refersTo": "button-outlined",
+      "description": "1px outline pill; danger variant swaps to alert red.",
+      "html": "<button class=\"ds-btn-outlined\">ยกเลิก</button>",
+      "css": ".ds-btn-outlined { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 24px; border: 1px solid #C6C6C8; border-radius: 9999px; background: transparent; color: #1C1C1E; font-size: 0.875rem; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, sans-serif; transition: all 150ms; cursor: pointer; } .ds-btn-outlined:active { opacity: 0.7; transform: scale(0.97); }"
+    },
+    {
+      "name": "Me Chip",
+      "kind": "chip",
+      "description": "Solid teal pill marking the current user in lists.",
+      "html": "<span class=\"ds-chip-me\">ฉัน</span>",
+      "css": ".ds-chip-me { display: inline-block; padding: 2px 6px; border-radius: 9999px; background: #0D9488; color: #fff; font-size: 0.6875rem; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }"
+    },
+    {
+      "name": "Count Chip",
+      "kind": "chip",
+      "description": "Neutral pill for counts and meta labels.",
+      "html": "<span class=\"ds-chip-count\">เวรบ่าย <strong>4</strong></span>",
+      "css": ".ds-chip-count { display: inline-block; padding: 2px 8px; border-radius: 9999px; background: var(--md-surface-variant, #F2F2F7); color: var(--md-on-surface-var, #6C6C70); font-size: 0.6875rem; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, sans-serif; } .ds-chip-count strong { color: #0F766E; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White surface card floating on the grouped background.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">เวรวันนี้</div><div class=\"ds-card-body\">เช้า: สมศรี · บ่าย: วิชัย</div></div>",
+      "css": ".ds-card { background: var(--md-surface, #fff); border-radius: 16px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.06); font-family: -apple-system, BlinkMacSystemFont, sans-serif; } .ds-card-title { font-size: 1rem; font-weight: 600; color: var(--md-on-surface, #1C1C1E); margin-bottom: 8px; } .ds-card-body { font-size: 0.875rem; color: var(--md-on-surface, #1C1C1E); }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Surface-variant filled field with teal focus ring.",
+      "html": "<input class=\"ds-input\" placeholder=\"ชื่อ\" />",
+      "css": ".ds-input { background: var(--md-surface-variant, #F2F2F7); border: 1px solid var(--md-outline, #C6C6C8); border-radius: 12px; padding: 6px 12px; font-size: 0.875rem; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: var(--md-on-surface, #1C1C1E); } .ds-input:focus { outline: none; box-shadow: 0 0 0 1px #2DD4BF; } .ds-input::placeholder { color: #6C6C70; }"
+    },
+    {
+      "name": "Shift Cell",
+      "kind": "custom",
+      "description": "Signature calendar day tile: rounded tile, typographic shift glyph.",
+      "html": "<div class=\"ds-shift-cell\"><span class=\"ds-shift-day\">14</span><span class=\"ds-shift-code\">✕</span></div>",
+      "css": ".ds-shift-cell { display: flex; flex-direction: column; align-items: center; justify-content: space-between; min-height: 56px; width: 48px; padding: 8px 0; border: 1px solid #E5E7EB; border-radius: 16px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; transition: all 150ms; } .ds-shift-cell:hover { border-color: #2DD4BF; } .ds-shift-day { font-size: 0.75rem; color: #6C6C70; } .ds-shift-code { font-size: 1.125rem; font-weight: 700; color: #DC2626; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ward Glance",
+    "overview": "One look answers \"who's on duty\" — that is the whole system. The interface behaves like an iOS system utility: neutral grouped backgrounds, white surface cards with large rounded corners, and a single Scrub Teal accent that carries every interactive and \"you/now\" signal. Nothing decorates; every color on screen encodes meaning. The system explicitly rejects dense Excel/HIS-style grids and heavy Material idioms; density comes from typography weight and pill chips, never more borders.",
+    "keyCharacteristics": [
+      "iOS grouped-background layering: bg → surface card → tinted callout",
+      "Pill geometry everywhere: full-radius buttons, chips, badges",
+      "Scrub Teal = interaction + identity; red = weekend/holiday/danger only",
+      "Dark mode is first-class (true black bg, elevated surfaces)",
+      "Soft tactile feedback: active scale + opacity dip on every pressable"
+    ],
+    "rules": [
+      { "name": "The Meaning-Only Rule", "body": "Chromatic color appears only when it encodes state: shift codes, today, holiday/weekend, me. Decoration stays neutral.", "section": "colors" },
+      { "name": "The Two-Voices Rule", "body": "Teal speaks for \"you and now\"; red speaks for \"off-duty and holiday\". No third voice joins at surface level.", "section": "colors" },
+      { "name": "The Thai Headroom Rule", "body": "Line-height never drops below 1.25× on Thai text; diacritics must never clip.", "section": "typography" },
+      { "name": "The Whisper Shadow Rule", "body": "If a shadow is noticeable, it's too dark. Elevation reads as air, not as drop shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every pressable with tactile feedback (active:scale + opacity, 150ms).",
+      "Do use teal tints + 1px teal border for today/me emphasis.",
+      "Do hold body text at Ink; Ink Secondary only for short labels.",
+      "Do keep touch targets ≥40px (shift cells ≥56px).",
+      "Do honor prefers-reduced-motion for the entrance animation set."
+    ],
+    "donts": [
+      "Don't build dense Excel/HIS-style grids — no hairline-border tables, no sub-12px cell text.",
+      "Don't import heavy Material idioms: no ripples, no saturated multi-color palettes, no FABs.",
+      "Don't add a third accent color; teal and red are the only voices.",
+      "Don't use frosted glass anywhere except sticky scroll headers.",
+      "Don't use colored border-left stripes thicker than 1px as accents."
+    ]
+  }
+}
