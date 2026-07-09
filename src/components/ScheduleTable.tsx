@@ -285,16 +285,16 @@ function holidaysOf(month: number, gregYear: number): Record<number, string> {
 
 // กลุ่มเวรที่ "ทำงานวันนี้" เรียงตามความสำคัญ
 const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolean; dot: string; accent: string }[] = [
-  { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-600',   accent: 'border-l-blue-400 dark:border-l-blue-500' },
-  { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-orange-700', accent: 'border-l-orange-500 dark:border-l-orange-400' },
-  { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-600', accent: 'border-l-purple-400 dark:border-l-purple-500' },
-  { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-700', accent: 'border-l-orange-400 dark:border-l-orange-500' },
+  { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-600',   accent: 'border-blue-200 dark:border-blue-800/70' },
+  { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-orange-700', accent: 'border-orange-200 dark:border-orange-800/70' },
+  { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-600', accent: 'border-purple-200 dark:border-purple-800/70' },
+  { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-700', accent: 'border-orange-200 dark:border-orange-800/70' },
 ]
 
-// การ์ดชื่อคน — ชื่อ + ตำแหน่ง + ปุ่มโทร, มีแถบสีกลุ่มด้านซ้าย
+// การ์ดชื่อคน — ชื่อ + ตำแหน่ง + ปุ่มโทร, ขอบสีตามกลุ่มเวร
 function PersonCard({ m, accent, isMe = false }: { m: StaffMember; accent: string; isMe?: boolean }) {
   return (
-    <div className={`flex items-center justify-between gap-2 pl-3 pr-2 py-2.5 rounded-xl border border-l-4 border-gray-100 dark:border-gray-700/50 bg-[var(--md-surface)] ${accent} ${isMe ? 'ring-2 ring-teal-400 dark:ring-teal-500' : ''}`}>
+    <div className={`flex items-center justify-between gap-2 pl-3 pr-2 py-2.5 rounded-xl border bg-[var(--md-surface)] ${accent} ${isMe ? 'ring-2 ring-teal-400 dark:ring-teal-500' : ''}`}>
       <div className="min-w-0">
         <p className="md-body-m font-medium text-[var(--md-on-surface)] truncate flex items-center gap-1.5">
           <span className="truncate">{m.name}</span>
@@ -384,7 +384,7 @@ function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: s
             <span className="md-title-s text-teal-700 dark:text-teal-300 flex items-center gap-1.5 min-w-0">
               <span className="shrink-0">👤</span><span className="truncate">{me.name}</span>
             </span>
-            <span className={`md-label-l shrink-0 px-3 py-1 rounded-full font-medium ${isWorking(myShift) ? 'bg-teal-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+            <span className={`md-label-l shrink-0 px-3 py-1 rounded-full font-medium ${isWorking(myShift) ? 'bg-teal-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
               {isWorking(myShift) ? `${SHIFT_DISPLAY[myShift]} ${SHIFT_LABELS[myShift]}${isBefore8 ? ' · ถึง 08:00' : ''}` : myShift === 'A' ? 'ไม่อยู่เวร' : 'ไม่มีเวร'}
             </span>
           </div>
@@ -508,7 +508,7 @@ function WeekView({ schedules, meName }: { schedules: ScheduleData[]; meName: st
                     const meEdge = isMe ? 'border-y-2 border-y-teal-500 dark:border-y-teal-400' : ''
                     return (
                       <tr key={`${member.name}-${ri}`} className={`border-b dark:border-gray-700 ${bg}`}>
-                        <td className={`border border-gray-200 dark:border-gray-700 px-2 py-1.5 sticky left-0 z-10 font-medium whitespace-nowrap ${bg} ${meEdge} ${isMe ? 'border-l-4 border-l-teal-500 dark:border-l-teal-400 text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}>
+                        <td className={`border border-gray-200 dark:border-gray-700 px-2 py-1.5 sticky left-0 z-10 font-medium whitespace-nowrap ${bg} ${meEdge} ${isMe ? 'text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}>
                           {member.phone ? <a href={telHref(member.phone)} className="text-teal-700 dark:text-teal-300 hover:underline">{member.name}</a> : member.name}
                           {isMe && <span className="ml-1 md-label-s px-1.5 py-0.5 rounded-full bg-teal-600 text-white">ฉัน</span>}
                         </td>
@@ -1237,7 +1237,7 @@ export default function ScheduleTable() {
                       const meEdge = isMe ? 'border-y-2 border-y-teal-500 dark:border-y-teal-400' : ''
                       return (
                         <tr key={rowIdx} className={`border-b dark:border-gray-700 ${editing ? '' : 'hover:brightness-95 dark:hover:brightness-110 transition-all duration-150'} ${bg}`}>
-                          <td className={`border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400 py-1.5 sticky left-0 z-10 ${bg} ${meEdge} ${isMe ? 'border-l-4 border-l-teal-500 dark:border-l-teal-400 text-teal-700 dark:text-teal-200 font-bold' : ''}`}>{no}</td>
+                          <td className={`border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400 py-1.5 sticky left-0 z-10 ${bg} ${meEdge} ${isMe ? 'text-teal-700 dark:text-teal-200 font-bold' : ''}`}>{no}</td>
                           <td className={`border border-gray-200 dark:border-gray-700 px-1 py-1.5 sticky left-8 z-10 ${bg} ${meEdge} ${editing ? '' : `font-medium whitespace-nowrap ${isMe ? 'text-teal-700 dark:text-teal-200 font-bold' : 'text-[var(--md-on-surface)]'}`}`}>
                             {editing ? (
                               <div className="flex flex-col gap-0.5">
