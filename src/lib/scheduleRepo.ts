@@ -97,6 +97,27 @@ export interface RealtimeChange {
   data?: ScheduleData
 }
 
+// นับจำนวนคนที่เปิดเว็บอยู่ผ่าน Supabase Presence
+// คืน unsubscribe; ถ้าไม่มี Supabase นับได้แค่ตัวเอง (1)
+export function subscribeOnlineCount(onCount: (n: number) => void): () => void {
+  if (!supabase) {
+    onCount(1)
+    return () => {}
+  }
+  const key = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`
+  const channel = supabase.channel('online-users', { config: { presence: { key } } })
+  channel
+    .on('presence', { event: 'sync' }, () => {
+      onCount(Object.keys(channel.presenceState()).length)
+    })
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') channel.track({ online_at: new Date().toISOString() })
+    })
+  return () => { supabase?.removeChannel(channel) }
+}
+
 // subscribe การเปลี่ยนแปลง table schedules แบบ realtime
 // คืน unsubscribe; ถ้าไม่มี Supabase คืน no-op
 export function subscribeSchedules(onChange: (c: RealtimeChange) => void): () => void {

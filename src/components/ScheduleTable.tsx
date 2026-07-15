@@ -10,7 +10,7 @@ import {
   type StaffMember,
 } from '@/data/schedule'
 import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
-import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules } from '@/lib/scheduleRepo'
+import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount } from '@/lib/scheduleRepo'
 
 const EDIT_PIN = '11223344'
 const EDIT_KEY = 'inr-schedule:edit'
@@ -294,7 +294,7 @@ const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolea
 // การ์ดชื่อคน — ชื่อ + ตำแหน่ง + ปุ่มโทร, ขอบสีตามกลุ่มเวร
 function PersonCard({ m, accent, isMe = false }: { m: StaffMember; accent: string; isMe?: boolean }) {
   return (
-    <div className={`flex items-center justify-between gap-2 pl-3 pr-2 py-2.5 rounded-xl border bg-[var(--md-surface)] ${accent} ${isMe ? 'ring-2 ring-teal-400 dark:ring-teal-500' : ''}`}>
+    <div className={`flex items-center justify-between gap-2 pl-3 pr-2 py-2.5 rounded-xl border bg-[var(--md-surface)] ${accent} ${isMe ? 'ring-2 ring-teal-400 dark:ring-teal-500 anim-ring-pulse' : ''}`}>
       <div className="min-w-0">
         <p className="md-body-m font-medium text-[var(--md-on-surface)] truncate flex items-center gap-1.5">
           <span className="truncate">{m.name}</span>
@@ -744,6 +744,13 @@ export default function ScheduleTable() {
     saveTimer.current = setTimeout(() => saveMonth(m), 600)
   }
 
+  // presence: นับคนที่เปิดเว็บอยู่ตอนนี้
+  const [onlineCount, setOnlineCount] = useState(1)
+  useEffect(() => {
+    if (!hydrated) return
+    return subscribeOnlineCount(setOnlineCount)
+  }, [hydrated])
+
   // realtime: ฟังการเปลี่ยนแปลงจาก Supabase แล้ว merge เข้า state
   // ข้ามเดือนที่กำลังแก้อยู่ เพื่อไม่ทับสิ่งที่พิมพ์ค้าง
   const liveRef = useRef({ editing, selMonth, selYear })
@@ -1035,8 +1042,19 @@ export default function ScheduleTable() {
             </Link>
           </div>
 
-          {/* Dark mode toggle — absolute so it doesn't affect centering */}
-          <div data-export-hide className="absolute top-4 right-4 z-10">
+          {/* Online count + dark mode toggle — absolute, right */}
+          <div data-export-hide className="absolute top-4 right-4 z-10 flex items-center gap-2">
+            <span
+              title="จำนวนคนที่เปิดดูอยู่ตอนนี้"
+              aria-label={`ออนไลน์ ${onlineCount} คน`}
+              className="md-label-m inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500" />
+              </span>
+              {onlineCount}
+            </span>
             <ThemeSwitch dark={dark} onToggle={toggleDark} />
           </div>
 
