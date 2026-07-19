@@ -4,6 +4,7 @@ export type ShiftCode =
   | 'N'   // standby S
   | 'N2'  // standby S (with number variant)
   | 'OFF' // เวรบ่ายดึก บ/ด
+  | 'CBD' // เวรเช้าบ่ายดึก ช/บ/ด (เต็มวัน)
   | 'SWAP'// สลับ
   | '-'   // ว่าง/ไม่ได้ทำงาน
 
@@ -13,6 +14,9 @@ export interface StaffMember {
   phone?: string
   role: 'doctor' | 'nurse' | 'tech'
   shifts: ShiftCode[]
+  // ชั่วโมงที่ standby ถูกเรียกมาทำงานจริง — key = index วัน (0-based) → จำนวนชั่วโมง
+  // เก็บเฉพาะวันที่มีชั่วโมง (sparse); ไม่มี = ไม่ถูกเรียก
+  standbyHours?: Record<number, number>
   totalWork?: number
   totalOT?: number
   totalNight?: number
@@ -170,6 +174,7 @@ export const SHIFT_LABELS: Record<ShiftCode, string> = {
   N: 'standby',
   N2: 'standby',
   OFF: 'เวรบ่ายดึก',
+  CBD: 'เวรเช้าบ่ายดึก',
   SWAP: 'สลับ',
   '-': '',
 }
