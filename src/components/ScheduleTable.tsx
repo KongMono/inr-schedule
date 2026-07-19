@@ -201,8 +201,7 @@ const PAY_RATE: Record<string, number> = { nurse: 1200, tech: 1600, doctor: 0 }
 // เวรเช้าบ่ายดึก (ช/บ/ด, เต็มวัน) = 3600 บาท/วัน เท่ากันทุกตำแหน่ง (แพทย์ไม่คิด)
 const CBD_PAY = 3600
 // อัตรา OT ต่อชั่วโมง เมื่อ standby ถูกเรียกมาทำงาน — ต่างตามตำแหน่ง (แพทย์ไม่คิด)
-// TODO(ยืนยันตัวเลขจริง): นักเทคโนยังเป็น placeholder รอ user ยืนยัน
-const OT_RATE: Record<string, number> = { nurse: 400, tech: 200, doctor: 0 }
+const OT_RATE: Record<string, number> = { nurse: 200, tech: 400, doctor: 0 }
 
 // standby ที่ถูกเรียกมาทำงาน (มีชั่วโมง)
 const isStandby = (s: ShiftCode) => s === 'N' || s === 'N2'
