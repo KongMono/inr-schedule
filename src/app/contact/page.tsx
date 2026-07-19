@@ -18,7 +18,7 @@ const ROLE_META: Record<ContactRole, { label: string; icon: string; avatar: stri
     badge: 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300',
   },
   tech: {
-    label: 'นักเทคโน', icon: '🩻',
+    label: 'นักเทคโนโลยีหัวใจและทรวงอก', icon: '🩻',
     avatar: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
     badge: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300',
   },

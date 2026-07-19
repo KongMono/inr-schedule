@@ -44,7 +44,7 @@ const ROLE_BG: Record<string, string> = {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  doctor: 'แพทย์', nurse: 'พยาบาล', tech: 'นักเทคโน',
+  doctor: 'แพทย์', nurse: 'พยาบาล', tech: 'นักเทคโนโลยีหัวใจและทรวงอก',
 }
 
 const ROLES: StaffMember['role'][] = ['doctor', 'nurse', 'tech']
