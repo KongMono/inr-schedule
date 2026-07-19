@@ -24,7 +24,7 @@ const SHIFT_STYLE: Record<ShiftCode, string> = {
   N:    'text-purple-600 dark:text-purple-400 font-medium',
   N2:   'text-purple-600 dark:text-purple-400 font-medium',
   OFF:  'text-orange-600 dark:text-orange-400 font-bold text-xs',
-  CBD:  'text-rose-600 dark:text-rose-400 font-bold text-xs',
+  CBD:  'text-rose-600 dark:text-rose-400 font-bold text-[10px] whitespace-nowrap',
   SWAP: 'text-indigo-500 dark:text-indigo-400 text-xs',
   '-':  'text-gray-300 dark:text-gray-600',
 }
@@ -1114,7 +1114,7 @@ export default function ScheduleTable() {
                   } ${editing ? 'cursor-pointer active:scale-95' : ''}`}
                 >
                   <span className={`md-label-l leading-none ${isRed ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>{day}</span>
-                  <span className={`leading-none flex items-center justify-center h-5 ${isStandby(shift) && hoursOf(member, dayIdx) > 0 ? 'md-label-m' : 'md-body-l'} ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
+                  <span className={`leading-none flex items-center justify-center h-5 whitespace-nowrap ${shift === 'CBD' ? '' : isStandby(shift) && hoursOf(member, dayIdx) > 0 ? 'md-label-m' : 'md-body-l'} ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
                     {cellSymbol(shift, hoursOf(member, dayIdx)) || (editing ? '·' : '')}
                   </span>
                 </div>
