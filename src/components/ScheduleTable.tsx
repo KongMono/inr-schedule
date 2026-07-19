@@ -196,8 +196,9 @@ const COUNT_LABELS: { key: 'M' | 'S' | 'OFF' | 'CBD' | 'SWAP'; label: string }[]
   { key: 'M', label: 'แพทย์เวร' }, { key: 'OFF', label: 'บ/ด' }, { key: 'CBD', label: 'ช/บ/ด' }, { key: 'S', label: 'standby' }, { key: 'SWAP', label: 'สลับ' },
 ]
 
-// เงินเวร = จำนวน บ/ด (OFF) × อัตราตามตำแหน่ง (แพทย์ไม่คิด)
-const PAY_RATE: Record<string, number> = { nurse: 1200, tech: 1600, doctor: 0 }
+// เงินเวร บ/ด = จำนวน บ/ด (OFF) × อัตราตามตำแหน่ง
+// นักเทคโน/แพทย์ไม่คิด บ/ด (นักเทคโนรับเป็น standby OT ชม.ละ 400 แทน)
+const PAY_RATE: Record<string, number> = { nurse: 1200, tech: 0, doctor: 0 }
 // เวรเช้าบ่ายดึก (ช/บ/ด, เต็มวัน) = 3600 บาท/วัน เท่ากันทุกตำแหน่ง (แพทย์ไม่คิด)
 const CBD_PAY = 3600
 // อัตรา OT ต่อชั่วโมง เมื่อ standby ถูกเรียกมาทำงาน — ต่างตามตำแหน่ง (แพทย์ไม่คิด)
@@ -608,13 +609,19 @@ function StandbyHoursPanel({ data, onSet }: {
   data: ScheduleData
   onSet: (si: number, di: number, hours: number) => void
 }) {
-  const entries: { si: number; di: number; m: StaffMember }[] = []
+  // จัดกลุ่มตามวัน: di → รายชื่อคน standby วันนั้น
+  const byDay = new Map<number, { si: number; m: StaffMember }[]>()
   data.staff.forEach((m, si) => {
     if (!m.name) return
-    m.shifts.forEach((sh, di) => { if (isStandby(sh)) entries.push({ si, di, m }) })
+    m.shifts.forEach((sh, di) => {
+      if (!isStandby(sh)) return
+      const arr = byDay.get(di) ?? []
+      arr.push({ si, m })
+      byDay.set(di, arr)
+    })
   })
-  entries.sort((a, b) => a.di - b.di || a.si - b.si)
-  const dayAbbr = (di: number) => DAY_ABBR[new Date(data.year, data.month - 1, di + 1).getDay()]
+  const days = [...byDay.keys()].sort((a, b) => a - b)
+  const dow = (di: number) => new Date(data.year, data.month - 1, di + 1).getDay()
   return (
     <div className="bg-[var(--md-surface)] md-elev-1 rounded-2xl mt-4 p-4 sm:p-6 transition-colors duration-300">
       <details className="group" open>
@@ -622,22 +629,35 @@ function StandbyHoursPanel({ data, onSet }: {
           <span className="md-title-m text-[var(--md-on-surface)]">⏱️ ชั่วโมง Standby ที่ถูกเรียกทำงาน</span>
           <span className="text-[var(--md-on-surface-var)] transition-transform group-open:rotate-90">›</span>
         </summary>
-        {entries.length === 0 ? (
+        {days.length === 0 ? (
           <p className="md-body-s text-[var(--md-on-surface-var)] mt-4">ยังไม่มีเวร standby (S) ในเดือนนี้ — ตั้งช่องวันให้เป็น S ก่อน แล้วรายการจะขึ้นที่นี่</p>
         ) : (
-          <div className="mt-4 space-y-1">
-            {entries.map(({ si, di, m }) => {
-              const hrs = hoursOf(m, di)
+          <div className="mt-4 -mx-4 sm:-mx-6 max-h-[65vh] overflow-y-auto">
+            {days.map(di => {
+              const isRed = data.weekendDays.includes(di + 1)
               return (
-                <div key={`${si}-${di}`} className="flex items-center gap-3 py-1.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
-                  <span className="md-label-m text-[var(--md-on-surface-var)] w-20 shrink-0 tabular-nums">
-                    {di + 1} {THAI_MONTHS[data.month].slice(0, 3)}. <span className="opacity-70">{dayAbbr(di)}</span>
-                  </span>
-                  <span className="md-body-m text-[var(--md-on-surface)] flex-1 truncate">{m.name}</span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button aria-label="ลดชั่วโมง" onClick={() => onSet(si, di, hrs - 1)} className="w-8 h-8 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-gray-600 dark:text-gray-300 active:scale-90 transition-transform text-lg leading-none">−</button>
-                    <span className={`w-14 text-center md-label-l tabular-nums ${hrs > 0 ? 'text-teal-700 dark:text-teal-300 font-semibold' : 'text-[var(--md-on-surface-var)]'}`}>{hrs > 0 ? `${hrs} ชม` : '—'}</span>
-                    <button aria-label="เพิ่มชั่วโมง" onClick={() => onSet(si, di, hrs + 1)} className="w-8 h-8 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 active:scale-90 transition-transform text-lg leading-none">+</button>
+                <div key={di}>
+                  {/* หัววัน — sticky */}
+                  <div className="sticky top-0 z-10 bg-[var(--md-surface)] px-4 sm:px-6 py-2 border-y border-gray-200 dark:border-gray-700">
+                    <span className={`md-label-l font-semibold ${isRed ? 'text-red-600 dark:text-red-400' : 'text-teal-700 dark:text-teal-300'}`}>
+                      {THAI_DAY_FULL[dow(di)]}ที่ {di + 1} {THAI_MONTHS[data.month]}
+                    </span>
+                  </div>
+                  {/* รายชื่อคน standby วันนั้น */}
+                  <div className="px-4 sm:px-6">
+                    {byDay.get(di)!.map(({ si, m }) => {
+                      const hrs = hoursOf(m, di)
+                      return (
+                        <div key={si} className="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                          <span className="md-body-m text-[var(--md-on-surface)] flex-1 truncate">{m.name}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button aria-label="ลดชั่วโมง" onClick={() => onSet(si, di, hrs - 1)} className="w-8 h-8 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-gray-600 dark:text-gray-300 active:scale-90 transition-transform text-lg leading-none">−</button>
+                            <span className={`w-14 text-center md-label-l tabular-nums ${hrs > 0 ? 'text-teal-700 dark:text-teal-300 font-semibold' : 'text-[var(--md-on-surface-var)]'}`}>{hrs > 0 ? `${hrs} ชม` : '—'}</span>
+                            <button aria-label="เพิ่มชั่วโมง" onClick={() => onSet(si, di, hrs + 1)} className="w-8 h-8 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 active:scale-90 transition-transform text-lg leading-none">+</button>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )
@@ -709,7 +729,7 @@ function MonthSummary({ data }: { data: ScheduleData }) {
         </table>
       </div>
       <p className="md-label-s text-[var(--md-on-surface-var)] mt-3">
-        เงินเวร = (บ/ด × อัตราตำแหน่ง) + (ช/บ/ด × ฿3,600) + (OT ชม × อัตราตำแหน่ง) — พยาบาล บ/ด ฿1,200 · นักเทคโน บ/ด ฿1,600 ต่อเวร · เวรเช้าบ่ายดึก ฿3,600/วัน · OT พยาบาล ฿{OT_RATE.nurse}/ชม · นักเทคโน ฿{OT_RATE.tech}/ชม · แพทย์ไม่คิด
+        เงินเวร = (บ/ด × อัตราตำแหน่ง) + (ช/บ/ด × ฿3,600) + (OT ชม × อัตราตำแหน่ง) — พยาบาล บ/ด ฿1,200/เวร · เวรเช้าบ่ายดึก ฿3,600/วัน · standby OT พยาบาล ฿{OT_RATE.nurse}/ชม · นักเทคโน ฿{OT_RATE.tech}/ชม · แพทย์ไม่คิด
       </p>
       </details>
     </div>
@@ -1445,8 +1465,8 @@ export default function ScheduleTable() {
         {/* Footer */}
         <div className="anim-fade-up bg-[var(--md-surface)] md-elev-1 mt-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5 md-body-s text-[var(--md-on-surface-var)] space-y-1.5 transition-colors duration-300">
           <p>หมายเหตุ: S = standby</p>
-          <p>เงินเวรพยาบาล 1,200/เวร</p>
-          <p>เงินเวรนักเทคโนหัวใจ 1,600/เวร เวรละ 200 บาท</p>
+          <p>เงินเวรพยาบาล บ/ด 1,200/เวร · standby ชม.ละ 200 บาท</p>
+          <p>เงินเวรนักเทคโนโลยีหัวใจและทรวงอก standby ชม.ละ 400 บาท</p>
           <p>เวรเช้าบ่ายดึก (ช/บ/ด) 3,600 บาท/วัน</p>
         </div>
       </div>
