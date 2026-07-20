@@ -25,12 +25,13 @@ const SHIFT_STYLE: Record<ShiftCode, string> = {
   N:    'text-purple-600 dark:text-purple-400 font-semibold',
   N2:   'text-purple-600 dark:text-purple-400 font-semibold',
   OFF:  'inline-block px-1 rounded bg-orange-100 dark:bg-orange-900/60 text-orange-700 dark:text-orange-300 font-bold text-[10px] leading-4',
+  CBD:  'inline-block px-1 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold text-[10px] leading-4 whitespace-nowrap',
   SWAP: 'text-indigo-500 dark:text-indigo-400 text-xs',
   '-':  'text-gray-300 dark:text-gray-600',
 }
 
 const SHIFT_DISPLAY: Record<ShiftCode, string> = {
-  M: '/', A: '✕', N: 'S', N2: 'S', OFF: 'บ/ด', SWAP: 'สลับ', '-': '',
+  M: '/', A: '✕', N: 'S', N2: 'S', OFF: 'บ/ด', CBD: 'ช/บ/ด', SWAP: 'สลับ', '-': '',
 }
 
 const DAY_ABBR = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
@@ -44,7 +45,7 @@ const ROLE_BG: Record<string, string> = {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  doctor: 'แพทย์', nurse: 'พยาบาล', tech: 'นักเทคโน',
+  doctor: 'แพทย์', nurse: 'พยาบาล', tech: 'นักเทคโนโลยีหัวใจและทรวงอก',
 }
 
 const ROLES: StaffMember['role'][] = ['doctor', 'nurse', 'tech']
@@ -158,6 +159,7 @@ function Legend() {
     <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 sm:gap-4 mt-3 text-xs sm:text-sm">
       {[
         { sym: 'บ/ด', symCls: 'text-orange-600 dark:text-orange-400 font-bold text-xs', label: 'เวรบ่ายดึก' },
+        { sym: 'ช/บ/ด', symCls: 'text-rose-600 dark:text-rose-400 font-bold text-xs', label: 'เวรเช้าบ่ายดึก' },
         { sym: '/',   symCls: 'text-blue-600 dark:text-blue-400 font-medium text-lg', label: 'แพทย์เวร' },
         { sym: '✕',   symCls: 'text-gray-400 dark:text-gray-500 text-sm', label: 'ไม่อยู่เวร' },
         { sym: 'S',   symCls: 'text-purple-600 dark:text-purple-400 font-medium', label: 'standby' },
@@ -176,26 +178,45 @@ function Legend() {
 
 // ── Shared shift helpers (Today / Week views) ────────────────────
 const THAI_DAY_FULL = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์']
-const WORKING: ShiftCode[] = ['M', 'N', 'N2', 'OFF', 'SWAP']
+const WORKING: ShiftCode[] = ['M', 'N', 'N2', 'OFF', 'CBD', 'SWAP']
 const isWorking = (s: ShiftCode) => WORKING.includes(s)
 
 // นับเวรของคนหนึ่งในเดือน — สำหรับสรุป "เวรของฉัน"
 function shiftCounts(m: StaffMember) {
-  let M = 0, S = 0, OFF = 0, SWAP = 0
+  let M = 0, S = 0, OFF = 0, CBD = 0, SWAP = 0
   for (const s of m.shifts) {
     if (s === 'M') M++
     else if (s === 'N' || s === 'N2') S++
     else if (s === 'OFF') OFF++
+    else if (s === 'CBD') CBD++
     else if (s === 'SWAP') SWAP++
   }
-  return { M, S, OFF, SWAP }
+  return { M, S, OFF, CBD, SWAP }
 }
-const COUNT_LABELS: { key: 'M' | 'S' | 'OFF' | 'SWAP'; label: string }[] = [
-  { key: 'M', label: 'แพทย์เวร' }, { key: 'OFF', label: 'บ/ด' }, { key: 'S', label: 'standby' }, { key: 'SWAP', label: 'สลับ' },
+const COUNT_LABELS: { key: 'M' | 'S' | 'OFF' | 'CBD' | 'SWAP'; label: string }[] = [
+  { key: 'M', label: 'แพทย์เวร' }, { key: 'OFF', label: 'บ/ด' }, { key: 'CBD', label: 'ช/บ/ด' }, { key: 'S', label: 'standby' }, { key: 'SWAP', label: 'สลับ' },
 ]
 
-// เงินเวร = จำนวน บ/ด (OFF) × อัตราตามตำแหน่ง (แพทย์ไม่คิด)
-const PAY_RATE: Record<string, number> = { nurse: 1200, tech: 1600, doctor: 0 }
+// เงินเวร บ/ด = จำนวน บ/ด (OFF) × อัตราตามตำแหน่ง
+// นักเทคโน/แพทย์ไม่คิด บ/ด (นักเทคโนรับเป็น standby OT ชม.ละ 400 แทน)
+const PAY_RATE: Record<string, number> = { nurse: 1200, tech: 0, doctor: 0 }
+// เวรเช้าบ่ายดึก (ช/บ/ด, เต็มวัน) = 3600 บาท/วัน เท่ากันทุกตำแหน่ง (แพทย์ไม่คิด)
+const CBD_PAY = 3600
+// อัตรา OT ต่อชั่วโมง เมื่อ standby ถูกเรียกมาทำงาน — ต่างตามตำแหน่ง (แพทย์ไม่คิด)
+const OT_RATE: Record<string, number> = { nurse: 200, tech: 400, doctor: 0 }
+
+// standby ที่ถูกเรียกมาทำงาน (มีชั่วโมง)
+const isStandby = (s: ShiftCode) => s === 'N' || s === 'N2'
+const hoursOf = (m: StaffMember, dayIdx: number) => m.standbyHours?.[dayIdx] ?? 0
+// รวมชั่วโมง standby ทั้งเดือนของคนหนึ่ง
+function standbyHoursTotal(m: StaffMember) {
+  return Object.values(m.standbyHours ?? {}).reduce((s, h) => s + (h || 0), 0)
+}
+// สัญลักษณ์ในช่อง: standby ที่มีชั่วโมง → "S·N"
+function cellSymbol(shift: ShiftCode, hrs: number) {
+  if (isStandby(shift) && hrs > 0) return `S·${hrs}`
+  return SHIFT_DISPLAY[shift]
+}
 
 // ── วันหยุดราชการไทย (auto) — key: "เดือน-วัน" (เดือนแบบ 1-12) ──────
 // แสดงผลอย่างเดียว ไม่แตะ weekendDays ที่บันทึกไว้
@@ -288,6 +309,7 @@ function holidaysOf(month: number, gregYear: number): Record<number, string> {
 const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolean; dot: string; accent: string }[] = [
   { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-600',   accent: 'border-blue-200 dark:border-blue-800/70' },
   { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-orange-700', accent: 'border-orange-200 dark:border-orange-800/70' },
+  { label: 'เวรเช้าบ่ายดึก', sym: 'ช/บ/ด', match: s => s === 'CBD',        dot: 'bg-rose-700',   accent: 'border-rose-200 dark:border-rose-800/70' },
   { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-600', accent: 'border-purple-200 dark:border-purple-800/70' },
   { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-700', accent: 'border-orange-200 dark:border-orange-800/70' },
 ]
@@ -582,12 +604,81 @@ function WeekView({ schedules, meName }: { schedules: ScheduleData[]; meName: st
   )
 }
 
+// ── แผงป้อนชั่วโมง Standby (edit mode) ────────────────────────────
+// รวบรวมทุกเวร standby (S) ในเดือน แล้วให้กรอกชั่วโมงที่ถูกเรียกมาทำงาน
+function StandbyHoursPanel({ data, onSet }: {
+  data: ScheduleData
+  onSet: (si: number, di: number, hours: number) => void
+}) {
+  // จัดกลุ่มตามวัน: di → รายชื่อคน standby วันนั้น
+  const byDay = new Map<number, { si: number; m: StaffMember }[]>()
+  data.staff.forEach((m, si) => {
+    if (!m.name) return
+    m.shifts.forEach((sh, di) => {
+      if (!isStandby(sh)) return
+      const arr = byDay.get(di) ?? []
+      arr.push({ si, m })
+      byDay.set(di, arr)
+    })
+  })
+  const days = [...byDay.keys()].sort((a, b) => a - b)
+  const dow = (di: number) => new Date(data.year, data.month - 1, di + 1).getDay()
+  return (
+    <div className="bg-[var(--md-surface)] md-elev-1 rounded-2xl mt-4 p-4 sm:p-6 transition-colors duration-300">
+      <details className="group" open>
+        <summary className="cursor-pointer select-none list-none flex items-center justify-between gap-2">
+          <span className="md-title-m text-[var(--md-on-surface)]">⏱️ ชั่วโมง Standby ที่ถูกเรียกทำงาน</span>
+          <span className="text-[var(--md-on-surface-var)] transition-transform group-open:rotate-90">›</span>
+        </summary>
+        {days.length === 0 ? (
+          <p className="md-body-s text-[var(--md-on-surface-var)] mt-4">ยังไม่มีเวร standby (S) ในเดือนนี้ — ตั้งช่องวันให้เป็น S ก่อน แล้วรายการจะขึ้นที่นี่</p>
+        ) : (
+          <div className="mt-4 -mx-4 sm:-mx-6 max-h-[65vh] overflow-y-auto">
+            {days.map(di => {
+              const isRed = data.weekendDays.includes(di + 1)
+              return (
+                <div key={di}>
+                  {/* หัววัน — sticky */}
+                  <div className="sticky top-0 z-10 bg-[var(--md-surface)] px-4 sm:px-6 py-2 border-y border-gray-200 dark:border-gray-700">
+                    <span className={`md-label-l font-semibold ${isRed ? 'text-red-600 dark:text-red-400' : 'text-teal-700 dark:text-teal-300'}`}>
+                      {THAI_DAY_FULL[dow(di)]}ที่ {di + 1} {THAI_MONTHS[data.month]}
+                    </span>
+                  </div>
+                  {/* รายชื่อคน standby วันนั้น */}
+                  <div className="px-4 sm:px-6">
+                    {byDay.get(di)!.map(({ si, m }) => {
+                      const hrs = hoursOf(m, di)
+                      return (
+                        <div key={si} className="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                          <span className="md-body-m text-[var(--md-on-surface)] flex-1 truncate">{m.name}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button aria-label="ลดชั่วโมง" onClick={() => onSet(si, di, hrs - 1)} className="w-8 h-8 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-gray-600 dark:text-gray-300 active:scale-90 transition-transform text-lg leading-none">−</button>
+                            <span className={`w-14 text-center md-label-l tabular-nums ${hrs > 0 ? 'text-teal-700 dark:text-teal-300 font-semibold' : 'text-[var(--md-on-surface-var)]'}`}>{hrs > 0 ? `${hrs} ชม` : '—'}</span>
+                            <button aria-label="เพิ่มชั่วโมง" onClick={() => onSet(si, di, hrs + 1)} className="w-8 h-8 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 active:scale-90 transition-transform text-lg leading-none">+</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </details>
+    </div>
+  )
+}
+
 // ── Month Summary — จำนวนเวร + เงินเวร ────────────────────────────
 function MonthSummary({ data }: { data: ScheduleData }) {
   const rows = data.staff.filter(m => m.name).map(m => {
     const c = shiftCounts(m)
     const rate = PAY_RATE[m.role] ?? 0
-    return { m, c, pay: c.OFF * rate }
+    const cbdPay = m.role === 'doctor' ? 0 : c.CBD * CBD_PAY
+    const otHrs = standbyHoursTotal(m)
+    const otPay = m.role === 'doctor' ? 0 : otHrs * (OT_RATE[m.role] ?? 0)
+    return { m, c, otHrs, pay: c.OFF * rate + cbdPay + otPay }
   })
   const total = rows.reduce((s, r) => s + r.pay, 0)
   const fmt = (n: number) => n.toLocaleString('th-TH')
@@ -609,18 +700,22 @@ function MonthSummary({ data }: { data: ScheduleData }) {
               <th className="text-left font-medium py-2 px-2">ชื่อ-นามสกุล</th>
               <th className="text-center font-medium py-2 px-2">ตำแหน่ง</th>
               <th className="text-center font-medium py-2 px-2">บ/ด</th>
+              <th className="text-center font-medium py-2 px-2">ช/บ/ด</th>
               <th className="text-center font-medium py-2 px-2">standby</th>
+              <th className="text-center font-medium py-2 px-2">OT (ชม)</th>
               <th className="text-center font-medium py-2 px-2">แพทย์เวร</th>
               <th className="text-right font-medium py-2 px-2">เงินเวร</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ m, c, pay }, i) => (
+            {rows.map(({ m, c, otHrs, pay }, i) => (
               <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
                 <td className="py-2 px-2 text-[var(--md-on-surface)] whitespace-nowrap">{m.name}</td>
                 <td className="py-2 px-2 text-center text-[var(--md-on-surface-var)]">{ROLE_LABEL[m.role]}</td>
                 <td className="py-2 px-2 text-center font-medium text-[var(--md-on-surface)]">{c.OFF || '—'}</td>
+                <td className="py-2 px-2 text-center font-medium text-[var(--md-on-surface)]">{c.CBD || '—'}</td>
                 <td className="py-2 px-2 text-center text-[var(--md-on-surface-var)]">{c.S || '—'}</td>
+                <td className="py-2 px-2 text-center text-[var(--md-on-surface)]">{otHrs || '—'}</td>
                 <td className="py-2 px-2 text-center text-[var(--md-on-surface-var)]">{c.M || '—'}</td>
                 <td className="py-2 px-2 text-right font-medium text-teal-700 dark:text-teal-300">{pay > 0 ? `฿${fmt(pay)}` : '—'}</td>
               </tr>
@@ -628,14 +723,14 @@ function MonthSummary({ data }: { data: ScheduleData }) {
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-gray-300 dark:border-gray-600">
-              <td colSpan={5} className="py-2 px-2 text-right font-medium text-[var(--md-on-surface)]">รวมเงินเวรทั้งเดือน</td>
+              <td colSpan={7} className="py-2 px-2 text-right font-medium text-[var(--md-on-surface)]">รวมเงินเวรทั้งเดือน</td>
               <td className="py-2 px-2 text-right font-bold text-teal-700 dark:text-teal-300">฿{fmt(total)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
       <p className="md-label-s text-[var(--md-on-surface-var)] mt-3">
-        เงินเวร = จำนวน บ/ด × อัตรา (พยาบาล ฿1,200 · นักเทคโน ฿1,600 ต่อเวร · แพทย์ไม่คิด)
+        เงินเวร = (บ/ด × อัตราตำแหน่ง) + (ช/บ/ด × ฿3,600) + (OT ชม × อัตราตำแหน่ง) — พยาบาล บ/ด ฿1,200/เวร · เวรเช้าบ่ายดึก ฿3,600/วัน · standby OT พยาบาล ฿{OT_RATE.nurse}/ชม · นักเทคโน ฿{OT_RATE.tech}/ชม · แพทย์ไม่คิด
       </p>
       </details>
     </div>
@@ -847,6 +942,20 @@ export default function ScheduleTable() {
   function patchStaff(si: number, patch: Partial<StaffMember>) {
     updateCurrent(m => ({ ...m, staff: m.staff.map((s, i) => i === si ? { ...s, ...patch } : s) }))
   }
+  // ตั้งชั่วโมง standby ที่ถูกเรียกมาทำงาน (0 = ล้างออก) — เก็บแบบ sparse
+  function setStandbyHour(si: number, di: number, hours: number) {
+    const h = Math.max(0, Math.min(24, Math.round(hours)))
+    updateCurrent(m => ({
+      ...m,
+      staff: m.staff.map((s, i) => {
+        if (i !== si) return s
+        const next: Record<number, number> = { ...(s.standbyHours ?? {}) }
+        if (h > 0) next[di] = h
+        else delete next[di]
+        return { ...s, standbyHours: next }
+      }),
+    }))
+  }
   function addStaff() {
     updateCurrent(m => ({ ...m, staff: [...m.staff, emptyStaff('nurse', m.totalDays)] }))
   }
@@ -1020,8 +1129,8 @@ export default function ScheduleTable() {
                   } ${isToday ? 'ring-2 ring-teal-400 dark:ring-teal-500' : ''} ${editing ? 'cursor-pointer active:scale-95' : ''}`}
                 >
                   <span className={`md-label-l leading-none ${isRed ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>{day}</span>
-                  <span className={`md-body-l leading-none flex items-center justify-center h-5 ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
-                    {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
+                  <span className={`leading-none flex items-center justify-center h-5 whitespace-nowrap ${shift === 'CBD' ? '' : isStandby(shift) && hoursOf(member, dayIdx) > 0 ? 'md-label-m' : 'md-body-l'} ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
+                    {cellSymbol(shift, hoursOf(member, dayIdx)) || (editing ? '·' : '')}
                   </span>
                 </div>
               )
@@ -1216,7 +1325,7 @@ export default function ScheduleTable() {
           )}
           {view === 'month' && editing && (
             <p className="md-body-s text-center text-[var(--md-on-surface-var)] mt-3">
-              คลิกช่องวัน (วน: ว่าง → / → ✕ → S → บ/ด → สลับ) · คลิกเลขวันบน header = วันหยุด
+              คลิกช่องวัน (วน: ว่าง → / → ✕ → S → บ/ด → ช/บ/ด → สลับ) · คลิกเลขวันบน header = วันหยุด
             </p>
           )}
 
@@ -1369,7 +1478,7 @@ export default function ScheduleTable() {
                                 className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${isToday ? 'ring-1 ring-inset ring-teal-400 dark:ring-teal-600 bg-teal-50/60 dark:bg-teal-950/40' : ''} ${editing ? 'cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:bg-teal-100 dark:active:bg-teal-900/50' : ''}`}
                               >
                                 <span className={SHIFT_STYLE[shift]} title={SHIFT_LABELS[shift]}>
-                                  {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
+                                  {cellSymbol(shift, hoursOf(member, dayIdx)) || (editing ? '·' : '')}
                                 </span>
                               </td>
                             )
@@ -1433,6 +1542,7 @@ export default function ScheduleTable() {
             )}
           </div>
 
+          {editing && <StandbyHoursPanel data={data} onSet={setStandbyHour} />}
           {!editing && <MonthSummary data={data} />}
 
         </div>}{/* end month view */}
@@ -1442,8 +1552,9 @@ export default function ScheduleTable() {
         {/* Footer */}
         <div className="anim-fade-up bg-[var(--md-surface)] md-elev-1 mt-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5 md-body-s text-[var(--md-on-surface-var)] space-y-1.5 transition-colors duration-300">
           <p>หมายเหตุ: S = standby</p>
-          <p>เงินเวรพยาบาล 1,200/เวร</p>
-          <p>เงินเวรนักเทคโนหัวใจ 1,600/เวร เวรละ 200 บาท</p>
+          <p>เงินเวรพยาบาล บ/ด 1,200/เวร · standby ชม.ละ 200 บาท</p>
+          <p>เงินเวรนักเทคโนโลยีหัวใจและทรวงอก standby ชม.ละ 400 บาท</p>
+          <p>เวรเช้าบ่ายดึก (ช/บ/ด) 3,600 บาท/วัน</p>
         </div>
       </div>
 
