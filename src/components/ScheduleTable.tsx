@@ -1330,6 +1330,36 @@ export default function ScheduleTable() {
           )}
 
           {view !== 'today' && <Legend />}
+
+          {/* รายชื่อวันหยุดราชการ — month: ทั้งเดือน · week: เฉพาะสัปดาห์นี้ · today: เฉพาะวันนี้ */}
+          {(() => {
+            const chips: { key: string; label: string; name: string }[] = []
+            if (view === 'month') {
+              for (const [d, name] of Object.entries(holidays)) chips.push({ key: d, label: d, name })
+            } else if (view === 'today') {
+              const name = holidaysOf(_today.getMonth() + 1, _today.getFullYear())[_today.getDate()]
+              if (name) chips.push({ key: 't', label: `${_today.getDate()}`, name })
+            } else {
+              const monday = new Date(_today)
+              monday.setDate(_today.getDate() - ((_today.getDay() + 6) % 7))
+              for (let i = 0; i < 7; i++) {
+                const d = new Date(monday)
+                d.setDate(monday.getDate() + i)
+                const name = holidaysOf(d.getMonth() + 1, d.getFullYear())[d.getDate()]
+                if (name) chips.push({ key: d.toISOString(), label: `${d.getDate()}`, name })
+              }
+            }
+            if (!chips.length) return null
+            return (
+              <div className="flex flex-wrap justify-center gap-x-2 gap-y-1.5 mt-3">
+                {chips.map(c => (
+                  <span key={c.key} className="md-label-s inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950/60 border border-red-100 dark:border-red-900 text-red-600 dark:text-red-400">
+                    <strong className="tabular-nums">{c.label}</strong> {c.name}
+                  </span>
+                ))}
+              </div>
+            )
+          })()}
         </div>
 
         {/* ── Today view ── */}
@@ -1370,24 +1400,35 @@ export default function ScheduleTable() {
                   <tbody>
                     {days.map(d => {
                       const holName = holidays[d]
+                      const weekday = new Date(data.year, data.month - 1, d).getDay()
                       const isWeekend = weekendDays.includes(d) || !!holName
                       const isToday = isCurMonthView && d === todayDate
-                      const dayAbbr = DAY_ABBR[new Date(data.year, data.month - 1, d).getDay()]
+                      const dayAbbr = DAY_ABBR[weekday]
+                      // เส้นหนาคั่นท้ายสัปดาห์ (หลังวันอาทิตย์) ให้กวาดตาเป็นสัปดาห์ได้
+                      const weekEnd = weekday === 0 && d !== totalDays ? 'border-b-2 border-b-gray-300 dark:border-b-gray-600' : ''
                       return (
-                        <tr key={d} className={`border-b dark:border-gray-700 ${isToday ? 'bg-teal-50 dark:bg-teal-950/40' : isWeekend ? 'bg-red-50 dark:bg-red-950/40' : ''}`}>
+                        <tr key={d} className={`border-b dark:border-gray-700 ${weekEnd} ${isToday ? 'bg-teal-50 dark:bg-teal-950/40' : isWeekend ? 'bg-red-50 dark:bg-red-950/40' : ''}`}>
                           <td
                             onMouseEnter={holName ? e => showHolTip(e, holName) : undefined}
                             onMouseLeave={holName ? hideHolTip : undefined}
-                            className={`border border-gray-200 dark:border-gray-700 px-2 py-1 text-center sticky left-0 z-10 whitespace-nowrap font-medium ${
+                            className={`border border-gray-200 dark:border-gray-700 px-2 py-0.5 sticky left-0 z-10 whitespace-nowrap ${weekEnd} ${
                               isToday
-                                ? 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-200'
+                                ? 'bg-teal-100 dark:bg-teal-900'
                                 : isWeekend
-                                  ? 'bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400'
-                                  : 'bg-[var(--md-surface)] text-[var(--md-on-surface)]'
+                                  ? 'bg-red-100 dark:bg-red-950'
+                                  : 'bg-[var(--md-surface)]'
                             } ${holName ? 'cursor-help' : ''}`}
                           >
-                            {d} {dayAbbr}
-                            {isToday && <span className="block md-label-s text-teal-600 dark:text-teal-300 leading-none">วันนี้</span>}
+                            <span className="flex items-center justify-end gap-1.5">
+                              <span className={`md-label-s w-6 text-right ${isToday ? 'text-teal-600 dark:text-teal-300' : isWeekend ? 'text-red-400 dark:text-red-500' : 'text-[var(--md-on-surface-var)]'}`}>{dayAbbr}</span>
+                              <span className={`text-base font-semibold w-6 text-center tabular-nums ${
+                                isToday
+                                  ? 'text-white bg-teal-600 dark:bg-teal-500 rounded-full inline-flex items-center justify-center h-6'
+                                  : isWeekend
+                                    ? 'text-red-600 dark:text-red-400'
+                                    : 'text-[var(--md-on-surface)]'
+                              }`}>{d}</span>
+                            </span>
                           </td>
                           {flatCols.map(({ member, rowIdx }) => {
                             const shift = member.shifts[d - 1] ?? '-'
