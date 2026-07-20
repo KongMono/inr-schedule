@@ -428,45 +428,49 @@ function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: s
       )}
 
       {/* ── เวรตอนนี้ (คุมถึง 08:00 เช้าวันถัดไป) ── */}
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <section className="rounded-2xl border-2 border-teal-200 dark:border-teal-800 overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-teal-50 dark:bg-teal-950/50 border-b border-teal-100 dark:border-teal-900">
           <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500" />
           </span>
-          <span className="md-title-m text-[var(--md-on-surface)]">เวรตอนนี้</span>
-          <span className="md-label-s px-2 py-0.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300">
+          <span className="md-title-m text-teal-800 dark:text-teal-200">เวรตอนนี้</span>
+          <span className="md-label-s px-2 py-0.5 rounded-full bg-teal-600 text-white">
             {isBefore8 ? `ของเมื่อวาน (${thDate(activeDate)}) · ถึง 08:00 น.` : `${thDate(activeDate)} · ถึง 08:00 น. พรุ่งนี้`}
           </span>
         </div>
-        {dutyBoard(activeDate)}
+        <div className="p-4 space-y-4">
+          {dutyBoard(activeDate)}
 
-        {/* ไม่อยู่เวร — ของวันที่กำลังคุมอยู่ */}
-        {offNow.length > 0 && (
-          <details className="group">
-            <summary className="md-label-m text-[var(--md-on-surface-var)] cursor-pointer select-none list-none flex items-center gap-1 pt-1">
-              <span className="transition-transform group-open:rotate-90">›</span>
-              ไม่อยู่เวร ({offNow.length})
-            </summary>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {offNow.map((m, i) => (
-                <span key={i} className={`md-label-s px-2.5 py-1 rounded-full ${m.name === meName ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 ring-1 ring-teal-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{m.name}{m.name === meName ? ' (ฉัน)' : ''}</span>
-              ))}
-            </div>
-          </details>
-        )}
+          {/* ไม่อยู่เวร — ของวันที่กำลังคุมอยู่ */}
+          {offNow.length > 0 && (
+            <details className="group">
+              <summary className="md-label-m text-[var(--md-on-surface-var)] cursor-pointer select-none list-none flex items-center gap-1 pt-1">
+                <span className="transition-transform group-open:rotate-90">›</span>
+                ไม่อยู่เวร ({offNow.length})
+              </summary>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {offNow.map((m, i) => (
+                  <span key={i} className={`md-label-s px-2.5 py-1 rounded-full ${m.name === meName ? 'bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 ring-1 ring-teal-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>{m.name}{m.name === meName ? ' (ฉัน)' : ''}</span>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
       </section>
 
       {/* ── เวรถัดไป (เริ่ม 08:00) ── */}
-      <section className="rounded-2xl bg-[var(--md-surface-variant)]/60 dark:bg-[var(--md-surface-variant)]/40 p-4 space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
+      <section className="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-[var(--md-surface-variant)] border-b border-gray-200 dark:border-gray-700">
           <span className="text-sm leading-none">⏭️</span>
-          <span className="md-title-m text-[var(--md-on-surface)]">เวรถัดไป</span>
-          <span className="md-label-s px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/15 text-[var(--md-on-surface-var)]">
+          <span className="md-title-m text-[var(--md-on-surface-var)]">เวรถัดไป</span>
+          <span className="md-label-s px-2 py-0.5 rounded-full bg-gray-500/15 dark:bg-gray-400/20 text-[var(--md-on-surface-var)]">
             {isBefore8 ? `วันนี้ (${thDate(nextDate)})` : `พรุ่งนี้ (${thDate(nextDate)})`} · เริ่ม 08:00 น.
           </span>
         </div>
-        {dutyBoard(nextDate)}
+        <div className="p-4 space-y-4 opacity-90">
+          {dutyBoard(nextDate)}
+        </div>
       </section>
     </div>
   )
