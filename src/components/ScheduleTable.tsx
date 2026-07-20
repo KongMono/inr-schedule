@@ -16,14 +16,15 @@ const EDIT_PIN = '11223344'
 const EDIT_KEY = 'inr-schedule:edit'
 const THEME_KEY = 'inr-schedule:theme'
 const ME_KEY = 'inr-schedule:me'
+const AXIS_KEY = 'inr-schedule:axis'
 
 // ── Shift styling (MD3 color-aware) ─────────────────────────────
 const SHIFT_STYLE: Record<ShiftCode, string> = {
   M:    'text-blue-600 dark:text-blue-400 font-medium',
-  A:    'text-red-600 dark:text-red-400 font-bold text-lg leading-none',
-  N:    'text-purple-600 dark:text-purple-400 font-medium',
-  N2:   'text-purple-600 dark:text-purple-400 font-medium',
-  OFF:  'text-orange-600 dark:text-orange-400 font-bold text-xs',
+  A:    'text-gray-300 dark:text-gray-600 text-sm leading-none',
+  N:    'text-purple-600 dark:text-purple-400 font-semibold',
+  N2:   'text-purple-600 dark:text-purple-400 font-semibold',
+  OFF:  'inline-block px-1 rounded bg-orange-100 dark:bg-orange-900/60 text-orange-700 dark:text-orange-300 font-bold text-[10px] leading-4',
   SWAP: 'text-indigo-500 dark:text-indigo-400 text-xs',
   '-':  'text-gray-300 dark:text-gray-600',
 }
@@ -158,7 +159,7 @@ function Legend() {
       {[
         { sym: 'บ/ด', symCls: 'text-orange-600 dark:text-orange-400 font-bold text-xs', label: 'เวรบ่ายดึก' },
         { sym: '/',   symCls: 'text-blue-600 dark:text-blue-400 font-medium text-lg', label: 'แพทย์เวร' },
-        { sym: '✕',   symCls: 'text-red-600 dark:text-red-400 font-bold text-lg', label: 'ไม่อยู่เวร' },
+        { sym: '✕',   symCls: 'text-gray-400 dark:text-gray-500 text-sm', label: 'ไม่อยู่เวร' },
         { sym: 'S',   symCls: 'text-purple-600 dark:text-purple-400 font-medium', label: 'standby' },
       ].map(({ sym, symCls, label }) => (
         <span key={label} className="flex items-center gap-1">
@@ -655,6 +656,15 @@ export default function ScheduleTable() {
   const [meName,    setMeName]    = useState<string | null>(null)
   const [contentKey, setContentKey] = useState(0)
   const [slideDir,   setSlideDir]   = useState<'left' | 'right'>('left')
+  const [axis,       setAxis]       = useState<'h' | 'v'>('h')
+
+  function toggleAxis() {
+    setAxis(a => {
+      const next = a === 'h' ? 'v' : 'h'
+      localStorage.setItem(AXIS_KEY, next)
+      return next
+    })
+  }
 
   function setMe(name: string | null) {
     setMeName(name)
@@ -683,6 +693,7 @@ export default function ScheduleTable() {
       setDark(isDark)
       document.documentElement.classList.toggle('dark', isDark)
       setMeName(localStorage.getItem(ME_KEY))
+      if (localStorage.getItem(AXIS_KEY) === 'v') setAxis('v')
       setHydrated(true)
     })
     return () => { alive = false }
@@ -800,6 +811,9 @@ export default function ScheduleTable() {
     })).filter(g => g.rows.length > 0)
   })()
   const monthColSpan = 2 + days.length + (editing ? 1 : 0)
+
+  const isCurMonthView = data.month === _today.getMonth() + 1 && data.thaiYear === _today.getFullYear() + 543
+  const todayDate = _today.getDate()
 
   const calOffset = (new Date(data.year, data.month - 1, 1).getDay() + 6) % 7
   const calEndPad = (calOffset + totalDays) % 7 === 0 ? 0 : 7 - ((calOffset + totalDays) % 7)
@@ -990,6 +1004,7 @@ export default function ScheduleTable() {
               const holName = holidays[day]
               const isHoliday = (weekendDays.includes(day) || !!holName) && !isWeekendCol
               const isRed = isWeekendCol || isHoliday
+              const isToday = isCurMonthView && day === todayDate
               return (
                 <div
                   key={dayIdx}
@@ -1002,7 +1017,7 @@ export default function ScheduleTable() {
                     isRed
                       ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/60'
                       : 'bg-[var(--md-surface)] border-gray-100 dark:border-gray-700/50'
-                  } ${editing ? 'cursor-pointer active:scale-95' : ''}`}
+                  } ${isToday ? 'ring-2 ring-teal-400 dark:ring-teal-500' : ''} ${editing ? 'cursor-pointer active:scale-95' : ''}`}
                 >
                   <span className={`md-label-l leading-none ${isRed ? 'text-red-600 dark:text-red-400' : 'text-[var(--md-on-surface)]'}`}>{day}</span>
                   <span className={`md-body-l leading-none flex items-center justify-center h-5 ${SHIFT_STYLE[shift]}`} title={SHIFT_LABELS[shift]}>
@@ -1025,7 +1040,7 @@ export default function ScheduleTable() {
 
   return (
     <div className="min-h-screen bg-[var(--md-background)] transition-colors duration-300 p-2 sm:p-4">
-      <div className="max-w-4xl mx-auto">
+      <div className={`${view === 'month' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto transition-all duration-300`}>
        <div ref={captureRef} className="bg-[var(--md-background)]">
 
         {/* ── MD3 Top App Bar ── */}
@@ -1162,6 +1177,13 @@ export default function ScheduleTable() {
                 <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
               </BtnIcon>
 
+              {/* Axis toggle — desktop table only, hidden while editing */}
+              {!editing && (
+                <BtnTonal onClick={toggleAxis} className="hidden md:inline-flex">
+                  ⇄ {axis === 'h' ? 'แนวตั้ง' : 'แนวนอน'}
+                </BtnTonal>
+              )}
+
               {/* Edit — month view only */}
               {view === 'month' && (
                 <div className="flex items-center gap-2 ml-1">
@@ -1212,6 +1234,68 @@ export default function ScheduleTable() {
 
           {/* Desktop table */}
           <div className="hidden md:block bg-[var(--md-surface)] md-elev-1 rounded-b-2xl overflow-x-auto transition-colors duration-300">
+            {axis === 'v' && !editing ? (() => {
+              const flatCols = roleGroups.flatMap(g => g.rows)
+              return (
+                <table className="text-sm border-collapse w-full" style={{ minWidth: `${100 + flatCols.length * 96}px` }}>
+                  <thead>
+                    <tr className="bg-gray-800 dark:bg-gray-950 text-white">
+                      <th rowSpan={2} className="border border-gray-600 px-3 py-2 text-center w-20 sticky left-0 z-20 bg-gray-800 dark:bg-gray-950 font-medium">วัน</th>
+                      {roleGroups.map(({ role, rows }) => (
+                        <th key={role} colSpan={rows.length} className="border border-gray-600 py-1.5 md-label-m font-semibold">
+                          {ROLE_LABEL[role]} <span className="font-normal opacity-70">({rows.length})</span>
+                        </th>
+                      ))}
+                    </tr>
+                    <tr className="bg-gray-800 dark:bg-gray-950 text-white">
+                      {flatCols.map(({ member, rowIdx }) => {
+                        const isMe = !!meName && member.name === meName
+                        return (
+                          <th key={rowIdx} className={`border border-gray-600 px-2 py-1.5 font-medium whitespace-nowrap md-label-m ${isMe ? 'bg-teal-700 dark:bg-teal-800' : ''}`}>
+                            {member.name}{isMe ? ' · ฉัน' : ''}
+                          </th>
+                        )
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {days.map(d => {
+                      const holName = holidays[d]
+                      const isWeekend = weekendDays.includes(d) || !!holName
+                      const isToday = isCurMonthView && d === todayDate
+                      const dayAbbr = DAY_ABBR[new Date(data.year, data.month - 1, d).getDay()]
+                      return (
+                        <tr key={d} className={`border-b dark:border-gray-700 ${isToday ? 'bg-teal-50 dark:bg-teal-950/40' : isWeekend ? 'bg-red-50 dark:bg-red-950/40' : ''}`}>
+                          <td
+                            onMouseEnter={holName ? e => showHolTip(e, holName) : undefined}
+                            onMouseLeave={holName ? hideHolTip : undefined}
+                            className={`border border-gray-200 dark:border-gray-700 px-2 py-1 text-center sticky left-0 z-10 whitespace-nowrap font-medium ${
+                              isToday
+                                ? 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-200'
+                                : isWeekend
+                                  ? 'bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400'
+                                  : 'bg-[var(--md-surface)] text-[var(--md-on-surface)]'
+                            } ${holName ? 'cursor-help' : ''}`}
+                          >
+                            {d} {dayAbbr}
+                            {isToday && <span className="block md-label-s text-teal-600 dark:text-teal-300 leading-none">วันนี้</span>}
+                          </td>
+                          {flatCols.map(({ member, rowIdx }) => {
+                            const shift = member.shifts[d - 1] ?? '-'
+                            const isMe = !!meName && member.name === meName
+                            return (
+                              <td key={rowIdx} className={`border border-gray-200 dark:border-gray-700 text-center py-1 ${isMe ? 'bg-teal-100/70 dark:bg-teal-900/50' : ''}`}>
+                                <span className={SHIFT_STYLE[shift]} title={SHIFT_LABELS[shift]}>{SHIFT_DISPLAY[shift]}</span>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )
+            })() : (
             <table className="text-sm border-collapse w-full" style={{ minWidth: '1280px' }}>
               <thead>
                 <tr className="bg-gray-800 dark:bg-gray-950 text-white">
@@ -1220,6 +1304,7 @@ export default function ScheduleTable() {
                   {days.map(d => {
                     const holName = holidays[d]
                     const isWeekend = weekendDays.includes(d) || !!holName
+                    const isToday = isCurMonthView && d === todayDate
                     const dayAbbr = DAY_ABBR[new Date(data.year, data.month - 1, d).getDay()]
                     return (
                       <th
@@ -1227,10 +1312,10 @@ export default function ScheduleTable() {
                         onClick={editing ? () => toggleWeekend(d) : undefined}
                         onMouseEnter={holName ? e => showHolTip(e, holName) : undefined}
                         onMouseLeave={holName ? hideHolTip : undefined}
-                        className={`border border-gray-600 w-9 py-1 text-center transition-colors ${isWeekend ? 'bg-red-800 dark:bg-red-950' : ''} ${editing ? 'cursor-pointer hover:bg-gray-700' : ''} ${holName && !editing ? 'cursor-help' : ''}`}
+                        className={`border border-gray-600 w-9 py-1 text-center transition-colors ${isToday ? 'bg-teal-700 dark:bg-teal-800' : isWeekend ? 'bg-red-800 dark:bg-red-950' : ''} ${editing ? 'cursor-pointer hover:bg-gray-700' : ''} ${holName && !editing ? 'cursor-help' : ''}`}
                       >
-                        <div className="md-label-s leading-none mb-0.5 opacity-70">{dayAbbr}</div>
-                        <div className={isWeekend ? 'rounded-full border-2 border-white/80 w-6 h-6 flex items-center justify-center mx-auto' : ''}>
+                        <div className="md-label-s leading-none mb-0.5 opacity-70">{isToday ? 'วันนี้' : dayAbbr}</div>
+                        <div className={isWeekend || isToday ? 'rounded-full border-2 border-white/80 w-6 h-6 flex items-center justify-center mx-auto' : ''}>
                           {d}
                         </div>
                       </th>
@@ -1276,11 +1361,12 @@ export default function ScheduleTable() {
                           </td>
                           {member.shifts.map((shift, dayIdx) => {
                             const isWeekend = weekendDays.includes(dayIdx + 1) || !!holidays[dayIdx + 1]
+                            const isToday = isCurMonthView && dayIdx + 1 === todayDate
                             return (
                               <td
                                 key={dayIdx}
                                 onClick={editing ? () => cycleCell(rowIdx, dayIdx) : undefined}
-                                className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${editing ? 'cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:bg-teal-100 dark:active:bg-teal-900/50' : ''}`}
+                                className={`border border-gray-200 dark:border-gray-700 text-center py-1.5 transition-colors duration-100 ${meEdge} ${isMe ? bg : isWeekend ? 'bg-red-50 dark:bg-red-950/50' : ''} ${isToday ? 'ring-1 ring-inset ring-teal-400 dark:ring-teal-600 bg-teal-50/60 dark:bg-teal-950/40' : ''} ${editing ? 'cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:bg-teal-100 dark:active:bg-teal-900/50' : ''}`}
                               >
                                 <span className={SHIFT_STYLE[shift]} title={SHIFT_LABELS[shift]}>
                                   {SHIFT_DISPLAY[shift] || (editing ? '·' : '')}
@@ -1310,6 +1396,7 @@ export default function ScheduleTable() {
                 ))}
               </tbody>
             </table>
+            )}
             {editing && (
               <div className="p-4">
                 <BtnOutlined onClick={addStaff}>+ เพิ่มแถว</BtnOutlined>
