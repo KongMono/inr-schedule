@@ -373,7 +373,7 @@ function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: s
       return (
         <section key={g.label} className="anim-fade-up">
           <div className="flex items-center gap-2 mb-2.5">
-            <span className={`grid place-items-center w-7 h-7 rounded-full text-white text-xs font-bold shrink-0 ${g.dot}`}>{g.sym}</span>
+            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${g.dot}`} />
             <span className="md-title-s text-[var(--md-on-surface)]">{g.label}</span>
             <span className="md-label-m px-2 py-0.5 rounded-full bg-[var(--md-surface-variant)] text-[var(--md-on-surface-var)]">{people.length}</span>
           </div>
