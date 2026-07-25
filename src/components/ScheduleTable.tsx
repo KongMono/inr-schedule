@@ -136,7 +136,7 @@ function LiveClock() {
   return (
     <span
       title="เวลาปัจจุบัน"
-      className="md-label-m inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 tabular-nums"
+      className="md-label-m inline-flex items-center gap-1 sm:gap-1.5 h-8 px-2 sm:px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 tabular-nums"
     >
       🕐 {now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
     </span>
@@ -1182,9 +1182,9 @@ export default function ScheduleTable() {
             <Link
               href="/contact"
               title="ข้อมูลติดต่อ"
-              className="md-label-l inline-flex items-center gap-1 h-10 px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
+              className="md-label-l inline-flex items-center gap-1 h-10 w-10 sm:w-auto justify-center px-0 sm:px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
             >
-              📞 ติดต่อ
+              📞 <span className="hidden sm:inline">ติดต่อ</span>
             </Link>
           </div>
 
@@ -1194,13 +1194,13 @@ export default function ScheduleTable() {
             <span
               title="จำนวนคนที่เปิดดูอยู่ตอนนี้"
               aria-label={`ออนไลน์ ${onlineCount} คน`}
-              className="md-label-m inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300"
+              className="md-label-m inline-flex items-center gap-1.5 h-8 px-2 sm:px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300"
             >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500" />
               </span>
-              {onlineCount}
+              <span className="hidden sm:inline">{onlineCount}</span>
             </span>
             <ThemeSwitch dark={dark} onToggle={toggleDark} />
           </div>
