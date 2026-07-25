@@ -125,6 +125,24 @@ function BtnIcon({ children, onClick, title = '', active = false }: {
 }
 
 // ── Theme Toggle Switch (iOS-style) ──────────────────────────────
+function LiveClock() {
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => {
+    setNow(new Date())
+    const id = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+  if (!now) return null
+  return (
+    <span
+      title="เวลาปัจจุบัน"
+      className="md-label-m inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 tabular-nums"
+    >
+      🕐 {now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+    </span>
+  )
+}
+
 function ThemeSwitch({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
   return (
     <button
@@ -1172,6 +1190,7 @@ export default function ScheduleTable() {
 
           {/* Online count + dark mode toggle — absolute, right */}
           <div data-export-hide className="absolute top-4 right-4 z-10 flex items-center gap-2">
+            <LiveClock />
             <span
               title="จำนวนคนที่เปิดดูอยู่ตอนนี้"
               aria-label={`ออนไลน์ ${onlineCount} คน`}
