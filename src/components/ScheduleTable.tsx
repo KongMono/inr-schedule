@@ -416,6 +416,9 @@ function TodayView({ schedules, meName }: { schedules: ScheduleData[]; meName: s
         <p className={`md-headline-m font-medium mt-0.5 ${isHoliday ? 'text-red-600 dark:text-red-400' : 'text-teal-700 dark:text-teal-300'}`}>
           {today.getDate()} {THAI_MONTHS[month]} {thaiYear}
         </p>
+        <div className="flex justify-center mt-2">
+          <LiveClock />
+        </div>
       </div>
 
       {/* เวรของฉัน */}
@@ -1182,25 +1185,24 @@ export default function ScheduleTable() {
             <Link
               href="/contact"
               title="ข้อมูลติดต่อ"
-              className="md-label-l inline-flex items-center gap-1 h-10 w-10 sm:w-auto justify-center px-0 sm:px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
+              className="md-label-l inline-flex items-center gap-1 h-10 px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
             >
-              📞 <span className="hidden sm:inline">ติดต่อ</span>
+              📞 ติดต่อ
             </Link>
           </div>
 
           {/* Online count + dark mode toggle — absolute, right */}
           <div data-export-hide className="absolute top-4 right-4 z-10 flex items-center gap-2">
-            <LiveClock />
             <span
               title="จำนวนคนที่เปิดดูอยู่ตอนนี้"
               aria-label={`ออนไลน์ ${onlineCount} คน`}
-              className="md-label-m inline-flex items-center gap-1.5 h-8 px-2 sm:px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300"
+              className="md-label-m inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300"
             >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500" />
               </span>
-              <span className="hidden sm:inline">{onlineCount}</span>
+              {onlineCount}
             </span>
             <ThemeSwitch dark={dark} onToggle={toggleDark} />
           </div>
