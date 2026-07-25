@@ -129,7 +129,7 @@ function LiveClock() {
   const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
     setNow(new Date())
-    const id = setInterval(() => setNow(new Date()), 30_000)
+    const id = setInterval(() => setNow(new Date()), 1_000)
     return () => clearInterval(id)
   }, [])
   if (!now) return null
@@ -138,7 +138,7 @@ function LiveClock() {
       title="เวลาปัจจุบัน"
       className="md-label-m inline-flex items-center gap-1 sm:gap-1.5 h-8 px-2 sm:px-2.5 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 tabular-nums"
     >
-      🕐 {now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+      🕐 ตอนนี้เวลา {now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} น.
     </span>
   )
 }
