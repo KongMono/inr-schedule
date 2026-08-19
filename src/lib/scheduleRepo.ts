@@ -8,6 +8,17 @@ const TABLE = 'schedules'
 const HISTORY_TABLE = 'schedule_history'
 const HISTORY_LIMIT = 15 // เก็บย้อนหลังสูงสุดต่อเดือน
 
+// เทียบข้อมูลแบบไม่สนลำดับ key — jsonb ของ Postgres จะเรียง key ใหม่ตอน round-trip
+// (เช่น { month, thaiYear, staff } → { month, staff, thaiYear }) ทำให้ JSON.stringify ตรงๆ เทียบพลาด
+function stableStringify(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(',')}]`
+  if (v && typeof v === 'object') {
+    const keys = Object.keys(v as Record<string, unknown>).sort()
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify((v as Record<string, unknown>)[k])}`).join(',')}}`
+  }
+  return JSON.stringify(v)
+}
+
 export const usingRemote = isSupabaseConfigured
 
 function sortByDate(a: ScheduleData, b: ScheduleData) {
@@ -84,8 +95,19 @@ export async function saveMonth(m: ScheduleData): Promise<void> {
 }
 
 // เก็บ snapshot ไว้ใน Supabase (online, ข้ามเครื่อง) — ตัด snapshot เก่าเกินโควตาทิ้ง
+// ข้าม insert ถ้าเหมือน snapshot ล่าสุดเป๊ะ (เช่น กดล็อกโดยไม่ได้แก้อะไรเลย) กันบวมโดยไม่จำเป็น
 async function pushHistoryRemote(data: ScheduleData): Promise<void> {
   if (!supabase) return
+  const { data: latest } = await supabase
+    .from(HISTORY_TABLE)
+    .select('data')
+    .eq('month', data.month)
+    .eq('thai_year', data.thaiYear)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (latest?.data && stableStringify(latest.data) === stableStringify(data)) return
+
   const { error } = await supabase
     .from(HISTORY_TABLE)
     .insert({ month: data.month, thai_year: data.thaiYear, data })

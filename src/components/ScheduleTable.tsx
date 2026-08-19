@@ -1862,7 +1862,7 @@ function HistoryDialog({ snapshots, loading, onRestore, onClose }: {
       >
         <h3 className="font-medium text-lg text-[var(--md-on-surface)] mb-1">🕐 ประวัติ/กู้คืน</h3>
         <p className="text-xs text-[var(--md-on-surface-var)] mb-4">
-          backup อัตโนมัติของเดือนนี้ (สูงสุด 15 ชุดล่าสุด)
+          backup อัตโนมัติของเดือนนี้ เก็บย้อนหลังสูงสุด 15 เวอร์ชันล่าสุด — เก่ากว่านั้นถูกลบอัตโนมัติ
         </p>
         {loading ? (
           <p className="text-sm text-[var(--md-on-surface-var)] py-6 text-center">กำลังโหลด…</p>

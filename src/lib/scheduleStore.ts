@@ -126,11 +126,23 @@ function saveHistoryMap(map: HistoryMap): void {
   }
 }
 
+// เทียบข้อมูลแบบไม่สนลำดับ key (เผื่อ object ผ่าน JSON round-trip มาแล้วลำดับ key เปลี่ยน)
+function stableStringify(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(',')}]`
+  if (v && typeof v === 'object') {
+    const keys = Object.keys(v as Record<string, unknown>).sort()
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify((v as Record<string, unknown>)[k])}`).join(',')}}`
+  }
+  return JSON.stringify(v)
+}
+
 // เรียกก่อนเขียนทับข้อมูลเดือนหนึ่ง — เก็บสถานะเดิมไว้กู้คืนทีหลังได้
+// ข้าม insert ถ้าเหมือน snapshot ล่าสุดเป๊ะ กันบวมโดยไม่จำเป็น (เช่น ล็อกโดยไม่ได้แก้อะไร)
 export function pushHistory(m: ScheduleData): void {
   const map = loadHistoryMap()
   const key = historyKey(m.month, m.thaiYear)
   const list = map[key] ?? []
+  if (list[0] && stableStringify(list[0].data) === stableStringify(m)) return
   list.unshift({ createdAt: Date.now(), data: m })
   map[key] = list.slice(0, HISTORY_LIMIT)
   saveHistoryMap(map)
