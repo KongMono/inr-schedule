@@ -10,7 +10,7 @@ import {
   type StaffMember,
 } from '@/data/schedule'
 import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
-import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount, getHistory, restoreSnapshot, type HistorySnapshot } from '@/lib/scheduleRepo'
+import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount, getHistory, restoreSnapshot, backupNow, type HistorySnapshot } from '@/lib/scheduleRepo'
 
 const EDIT_PIN = '11223344'
 const EDIT_KEY = 'inr-schedule:edit'
@@ -1105,7 +1105,11 @@ export default function ScheduleTable() {
     if (pin !== EDIT_PIN) return false
     setEditing(true); sessionStorage.setItem(EDIT_KEY, '1'); setShowPin(false); return true
   }
-  function lock() { setEditing(false); sessionStorage.removeItem(EDIT_KEY) }
+  function lock() {
+    if (exists) backupNow(data) // backup สถานะล่าสุดไว้ทุกครั้งที่กดล็อกหลังแก้ไขเสร็จ
+    setEditing(false)
+    sessionStorage.removeItem(EDIT_KEY)
+  }
 
   function updateCurrent(fn: (m: ScheduleData) => ScheduleData) {
     setSchedules(prev => {

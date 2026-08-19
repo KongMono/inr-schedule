@@ -103,6 +103,12 @@ async function pushHistoryRemote(data: ScheduleData): Promise<void> {
   }
 }
 
+// backup สถานะปัจจุบันทันที (ไม่ต้องรอมีการ save ทับ) — ใช้ตอนกดล็อกหลังแก้ไขเสร็จ
+export async function backupNow(m: ScheduleData): Promise<void> {
+  if (!supabase) { pushHistory(m); return }
+  await pushHistoryRemote(m)
+}
+
 // ประวัติ backup ของเดือนหนึ่ง — online (Supabase) ถ้าตั้งค่าไว้, ไม่งั้น fallback เครื่องนี้
 export async function getHistory(month: number, thaiYear: number): Promise<HistorySnapshot[]> {
   if (!supabase) return loadHistory(month, thaiYear)
