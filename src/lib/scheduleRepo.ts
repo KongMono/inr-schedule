@@ -1,8 +1,12 @@
 import { schedules as seedSchedules, type ScheduleData } from '@/data/schedule'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
-import { loadSchedules, saveSchedules, resetSchedules } from '@/lib/scheduleStore'
+import { loadSchedules, saveSchedules, resetSchedules, pushHistory, loadHistory, type HistorySnapshot } from '@/lib/scheduleStore'
+
+export type { HistorySnapshot }
 
 const TABLE = 'schedules'
+const HISTORY_TABLE = 'schedule_history'
+const HISTORY_LIMIT = 15 // เก็บย้อนหลังสูงสุดต่อเดือน
 
 export const usingRemote = isSupabaseConfigured
 
@@ -58,13 +62,65 @@ export async function fetchSchedules(): Promise<ScheduleData[]> {
 
 export async function saveMonth(m: ScheduleData): Promise<void> {
   if (!supabase) {
+    // เก็บ backup สถานะเดิม (ถ้ามี) ไว้ในเครื่องนี้ ก่อนเขียนทับ
+    const prev = loadSchedules().find((x) => x.month === m.month && x.thaiYear === m.thaiYear)
+    if (prev) pushHistory(prev)
     saveSchedules(mergeLocal(m))
     return
   }
+  // เช็คของเดิมบน Supabase ก่อน แล้ว backup ไว้ (online) ก่อนเขียนทับจริง
+  const { data: existing } = await supabase
+    .from(TABLE)
+    .select('data')
+    .eq('month', m.month)
+    .eq('thai_year', m.thaiYear)
+    .maybeSingle()
+  if (existing?.data) await pushHistoryRemote(existing.data as ScheduleData)
+
   const { error } = await supabase
     .from(TABLE)
     .upsert({ month: m.month, thai_year: m.thaiYear, data: m }, { onConflict: 'month,thai_year' })
   if (error) console.error('[schedule] save error:', error.message)
+}
+
+// เก็บ snapshot ไว้ใน Supabase (online, ข้ามเครื่อง) — ตัด snapshot เก่าเกินโควตาทิ้ง
+async function pushHistoryRemote(data: ScheduleData): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase
+    .from(HISTORY_TABLE)
+    .insert({ month: data.month, thai_year: data.thaiYear, data })
+  if (error) { console.error('[schedule] history insert error:', error.message); return }
+
+  const { data: overflow } = await supabase
+    .from(HISTORY_TABLE)
+    .select('id')
+    .eq('month', data.month)
+    .eq('thai_year', data.thaiYear)
+    .order('created_at', { ascending: false })
+    .range(HISTORY_LIMIT, HISTORY_LIMIT + 200)
+  if (overflow?.length) {
+    await supabase.from(HISTORY_TABLE).delete().in('id', overflow.map((r) => r.id))
+  }
+}
+
+// ประวัติ backup ของเดือนหนึ่ง — online (Supabase) ถ้าตั้งค่าไว้, ไม่งั้น fallback เครื่องนี้
+export async function getHistory(month: number, thaiYear: number): Promise<HistorySnapshot[]> {
+  if (!supabase) return loadHistory(month, thaiYear)
+  const { data, error } = await supabase
+    .from(HISTORY_TABLE)
+    .select('data, created_at')
+    .eq('month', month)
+    .eq('thai_year', thaiYear)
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_LIMIT)
+  if (error) { console.error('[schedule] history fetch error:', error.message); return [] }
+  return (data ?? []).map((r) => ({ createdAt: new Date(r.created_at as string).getTime(), data: r.data as ScheduleData }))
+}
+
+// กู้คืน snapshot เก่า — เขียนทับปัจจุบันด้วยข้อมูล snapshot (ผ่าน saveMonth ปกติ
+// ซึ่งจะ backup สถานะปัจจุบันไว้ก่อนโดยอัตโนมัติ กู้ผิดก็ย้อนได้อีกที)
+export async function restoreSnapshot(data: ScheduleData): Promise<void> {
+  await saveMonth(data)
 }
 
 export async function removeMonth(month: number, thaiYear: number): Promise<void> {

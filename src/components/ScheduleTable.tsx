@@ -10,7 +10,7 @@ import {
   type StaffMember,
 } from '@/data/schedule'
 import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
-import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount } from '@/lib/scheduleRepo'
+import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount, getHistory, restoreSnapshot, type HistorySnapshot } from '@/lib/scheduleRepo'
 
 const EDIT_PIN = '11223344'
 const EDIT_KEY = 'inr-schedule:edit'
@@ -237,6 +237,52 @@ function standbyHoursTotal(m: StaffMember) {
 function cellSymbol(shift: ShiftCode, hrs: number) {
   if (isStandby(shift) && hrs > 0) return `S·${hrs}`
   return SHIFT_DISPLAY[shift]
+}
+
+// เติมช่องว่าง ('-') อัตโนมัติ — ใช้เฉพาะตอนแก้ไข, ไม่แตะเวรที่กรอกไว้แล้ว
+// เรียนรู้ชุดเวร (usedCodes) จากที่กรอกไว้แล้วในกลุ่มตำแหน่งเดียวกัน แล้วแจกแบบ
+// greedy: คนที่มีเวร code นั้นน้อยสุดได้ก่อน, หลีกเลี่ยงเวรทำงานติดกันวันถัดไปถ้าเลือกได้
+function autoFillEmpty(data: ScheduleData): ScheduleData {
+  const groups = new Map<string, StaffMember[]>()
+  for (const m of data.staff) {
+    if (!m.name) continue
+    const g = groups.get(m.role) ?? []
+    g.push(m)
+    groups.set(m.role, g)
+  }
+
+  const filled = new Map<StaffMember, ShiftCode[]>()
+  for (const group of groups.values()) {
+    // SWAP คือการตกลงสลับเวรกันเอง ไม่ใช่เวรปกติที่ควรให้ระบบยัดเติมเอง
+    const usedCodes = Array.from(new Set(group.flatMap(m => m.shifts).filter(s => s !== '-' && s !== 'SWAP')))
+    const next = new Map<StaffMember, ShiftCode[]>(group.map(m => [m, [...m.shifts]]))
+    if (usedCodes.length) {
+      const counts = new Map<StaffMember, Map<ShiftCode, number>>()
+      for (const m of group) {
+        const c = new Map<ShiftCode, number>(usedCodes.map(code => [code, 0]))
+        for (const s of m.shifts) if (c.has(s)) c.set(s, (c.get(s) ?? 0) + 1)
+        counts.set(m, c)
+      }
+      for (let d = 0; d < data.totalDays; d++) {
+        for (const m of group) {
+          const shifts = next.get(m)!
+          if (shifts[d] !== '-') continue
+          const prev = d > 0 ? shifts[d - 1] : undefined
+          const avoidRepeat = prev !== undefined && isWorking(prev)
+          const nonRepeat = avoidRepeat ? usedCodes.filter(code => code !== prev) : usedCodes
+          const candidates = nonRepeat.length ? nonRepeat : usedCodes
+          const c = counts.get(m)!
+          let best = candidates[0]
+          for (const code of candidates) if ((c.get(code) ?? 0) < (c.get(best) ?? 0)) best = code
+          shifts[d] = best
+          c.set(best, (c.get(best) ?? 0) + 1)
+        }
+      }
+    }
+    for (const m of group) filled.set(m, next.get(m)!)
+  }
+
+  return { ...data, staff: data.staff.map(m => (filled.has(m) ? { ...m, shifts: filled.get(m)! } : m)) }
 }
 
 // ── วันหยุดราชการไทย (auto) — key: "เดือน-วัน" (เดือนแบบ 1-12) ──────
@@ -698,6 +744,117 @@ function StandbyHoursPanel({ data, onSet }: {
   )
 }
 
+// ── Workload Heatmap — ภาพรวม load รายวันของแต่ละคนในเดือน ──────────
+// น้ำหนักเวรต่อวัน ใช้ประมาณ "ความหนัก" ของวันนั้น ไม่ใช่เงิน
+const HEATMAP_WEIGHT: Partial<Record<ShiftCode, number>> = { M: 1, OFF: 1, CBD: 1.5, SWAP: 0.6 }
+const HEATMAP_MAX_WEIGHT = 1.5
+
+function heatmapWeight(shift: ShiftCode, hrs: number) {
+  if (isStandby(shift)) return 0.3 + Math.min(hrs, 8) / 8 * 0.7 // มีเวร standby เสมอ 0.3, ถูกเรียกยิ่งนาน ยิ่งเข้ม
+  return HEATMAP_WEIGHT[shift] ?? 0
+}
+
+function WorkloadHeatmap({ data }: { data: ScheduleData }) {
+  const [tip, setTip] = useState<string | null>(null)
+  const holName = holidaysOf(data.month, data.year)
+  const groups = ROLES
+    .map(role => data.staff.filter(m => m.name && m.role === role))
+    .filter(g => g.length > 0)
+  if (!groups.length) return null
+
+  const totals = new Map<StaffMember, number>()
+  for (const m of data.staff) {
+    if (!m.name) continue
+    let sum = 0
+    for (let d = 0; d < data.totalDays; d++) sum += heatmapWeight(m.shifts[d], hoursOf(m, d))
+    totals.set(m, sum)
+  }
+
+  return (
+    <div className="bg-[var(--md-surface)] md-elev-1 rounded-2xl mt-4 p-4 sm:p-6 transition-colors duration-300">
+      <details className="group">
+        <summary className="cursor-pointer select-none list-none flex items-center justify-between gap-2">
+          <span className="md-title-m text-[var(--md-on-surface)]">🔥 Workload Heatmap</span>
+          <span className="text-[var(--md-on-surface-var)] transition-transform group-open:rotate-90">›</span>
+        </summary>
+        <p className="md-label-s text-[var(--md-on-surface-var)] mt-1">
+          สีเข้ม = วันนั้นหนัก (M/บ/ด/ช/บ/ด/standby ที่ถูกเรียก) — เทียบ load เฉพาะในตำแหน่งเดียวกัน
+        </p>
+        <div className="mt-4 space-y-5">
+          {groups.map(group => {
+            const avg = group.reduce((s, m) => s + (totals.get(m) ?? 0), 0) / group.length
+            return (
+              <div key={group[0].role}>
+                <p className="md-title-s text-[var(--md-on-surface-var)] mb-1.5">{ROLE_LABEL[group[0].role]}</p>
+                <div className="overflow-x-auto -mx-1 px-1">
+                  <table className="border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="sticky left-0 top-0 z-20 bg-[var(--md-surface)]" />
+                        {Array.from({ length: data.totalDays }, (_, d) => {
+                          const isHol = data.weekendDays.includes(d + 1) || !!holName[d + 1]
+                          return (
+                            <th
+                              key={d}
+                              className={`sticky top-0 z-10 bg-[var(--md-surface)] p-[1px] pb-1 font-normal ${isHol ? 'text-red-500 dark:text-red-400' : 'text-[var(--md-on-surface-var)]'}`}
+                            >
+                              <span className="block w-5 sm:w-4 text-center text-[10px] leading-none">{d + 1}</span>
+                            </th>
+                          )
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.map((m, mi) => {
+                        const total = totals.get(m) ?? 0
+                        const overload = total > avg * 1.2 && avg > 0
+                        return (
+                          <tr key={mi}>
+                            <td className="sticky left-0 bg-[var(--md-surface)] pr-2 py-0.5 whitespace-nowrap">
+                              <span className="md-label-s text-[var(--md-on-surface)]">{m.name}</span>
+                              {overload && (
+                                <span className="ml-1 md-label-s text-orange-600 dark:text-orange-400" title="load สูงกว่าค่าเฉลี่ยกลุ่ม">⚠️</span>
+                              )}
+                            </td>
+                            {Array.from({ length: data.totalDays }, (_, d) => {
+                              const shift = m.shifts[d]
+                              const hrs = hoursOf(m, d)
+                              const w = heatmapWeight(shift, hrs)
+                              const pct = Math.round(Math.min(w / HEATMAP_MAX_WEIGHT, 1) * 100)
+                              const isHol = data.weekendDays.includes(d + 1) || !!holName[d + 1]
+                              const label = `${m.name} · วันที่ ${d + 1} — ${SHIFT_LABELS[shift]}${hrs ? ` (เรียก ${hrs} ชม.)` : ''}`
+                              return (
+                                <td key={d} className="p-[1px]">
+                                  <button
+                                    type="button"
+                                    title={label}
+                                    onClick={() => setTip(label)}
+                                    className={`block w-5 h-5 sm:w-4 sm:h-4 rounded-[3px] ${isHol ? 'ring-1 ring-inset ring-red-300 dark:ring-red-800' : ''}`}
+                                    style={{ backgroundColor: pct > 0 ? `color-mix(in srgb, var(--md-primary) ${pct}%, transparent)` : 'var(--md-surface-variant)' }}
+                                  />
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {tip && (
+          <p className="md-label-m text-teal-700 dark:text-teal-300 mt-3 bg-teal-50 dark:bg-teal-950/40 rounded-lg px-3 py-2">
+            {tip}
+          </p>
+        )}
+      </details>
+    </div>
+  )
+}
+
 // ── Month Summary — จำนวนเวร + เงินเวร ────────────────────────────
 function MonthSummary({ data }: { data: ScheduleData }) {
   const rows = data.staff.filter(m => m.name).map(m => {
@@ -775,6 +932,9 @@ export default function ScheduleTable() {
   const [selYear,   setSelYear]   = useState(() => _today.getFullYear() + 543)
   const [editing,   setEditing]   = useState(false)
   const [showPin,   setShowPin]   = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [historySnapshots, setHistorySnapshots] = useState<HistorySnapshot[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [dark,      setDark]      = useState(false)
   const [meName,    setMeName]    = useState<string | null>(null)
   const [contentKey, setContentKey] = useState(0)
@@ -1024,6 +1184,31 @@ export default function ScheduleTable() {
     })
   }
 
+  // เติมช่องว่างอัตโนมัติ (เฉพาะ '-') — ไม่แตะเวรที่กรอกไว้แล้ว
+  function autoFillEmptyShifts() {
+    if (!confirm('เติมเฉพาะช่องว่างให้อัตโนมัติ โดยเรียนรู้จากเวรที่กรอกไว้แล้วในเดือนนี้\n(คนที่มีเวรน้อยสุดได้ก่อน, หลีกเลี่ยงเวรติดกันถ้าเลือกได้ — เวรที่กรอกไว้แล้วจะไม่ถูกแตะ)')) return
+    updateCurrent(autoFillEmpty)
+  }
+  // เปิด dialog ประวัติ + โหลด snapshot ของเดือนที่กำลังดู
+  async function openHistory() {
+    setShowHistory(true)
+    setHistoryLoading(true)
+    const snaps = await getHistory(selMonth, selYear)
+    setHistorySnapshots(snaps)
+    setHistoryLoading(false)
+  }
+  // กู้คืน snapshot เก่าจาก backup — เขียนทับปัจจุบัน (ปัจจุบันจะถูก backup ไว้ก่อนอัตโนมัติ)
+  async function restoreFromHistory(snap: HistorySnapshot) {
+    const when = new Date(snap.createdAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })
+    if (!confirm(`กู้คืนตารางกลับไปเป็นเวอร์ชัน ${when}?\n(สถานะปัจจุบันจะถูก backup ไว้ก่อน กู้ผิดย้อนกลับได้อีก)`)) return
+    await restoreSnapshot(snap.data)
+    setSchedules(prev => {
+      const i = prev.findIndex(x => x.month === snap.data.month && x.thaiYear === snap.data.thaiYear)
+      const next = i >= 0 ? prev.map((x, idx) => idx === i ? snap.data : x) : [...prev, snap.data].sort(byDate)
+      return next
+    })
+    setShowHistory(false)
+  }
   function copyFromPrevious() {
     if (!prevSource) return
     if (!confirm(`ก๊อปปี้เวรจาก ${THAI_MONTHS[prevSource.month]} ${prevSource.thaiYear} มาเดือนนี้?\n(เวรเดิมของเดือนนี้จะถูกแทนที่ — เริ่มเป็นฐานแล้วแก้ต่อได้)`)) return
@@ -1346,10 +1531,22 @@ export default function ScheduleTable() {
           {view === 'month' && !editing && !exists && (
             <p className="md-body-s text-center text-[var(--md-on-surface-var)] mt-3">ยังไม่มีข้อมูลเดือนนี้</p>
           )}
-          {view === 'month' && editing && prevSource && (
-            <div data-export-hide className="flex justify-center mt-3">
-              <BtnTonal onClick={copyFromPrevious}>📋 ก๊อปปี้เวรจาก {THAI_MONTHS[prevSource.month]} {prevSource.thaiYear}</BtnTonal>
+          {view === 'month' && editing && exists && (
+            <div data-export-hide className="flex flex-wrap justify-center gap-2 mt-3">
+              {prevSource && (
+                <BtnTonal onClick={copyFromPrevious}>📋 ก๊อปปี้เวรจาก {THAI_MONTHS[prevSource.month]} {prevSource.thaiYear}</BtnTonal>
+              )}
+              <BtnTonal onClick={autoFillEmptyShifts}>🪄 เติมเวรว่างอัตโนมัติ</BtnTonal>
+              <BtnTonal onClick={openHistory}>🕐 ประวัติ/กู้คืน</BtnTonal>
             </div>
+          )}
+          {showHistory && (
+            <HistoryDialog
+              snapshots={historySnapshots}
+              loading={historyLoading}
+              onRestore={restoreFromHistory}
+              onClose={() => setShowHistory(false)}
+            />
           )}
           {view === 'month' && editing && (
             <p className="md-body-s text-center text-[var(--md-on-surface-var)] mt-3">
@@ -1612,6 +1809,7 @@ export default function ScheduleTable() {
           </div>
 
           {editing && <StandbyHoursPanel data={data} onSet={setStandbyHour} />}
+          {!editing && <WorkloadHeatmap data={data} />}
           {!editing && <MonthSummary data={data} />}
 
         </div>}{/* end month view */}
@@ -1645,7 +1843,50 @@ export default function ScheduleTable() {
   )
 }
 
-// ── PIN Modal ────────────────────────────────────────────────────
+// ประวัติ backup ของเดือนที่กำลังดู — กู้คืนจาก snapshot (online ผ่าน Supabase ถ้าตั้งค่าไว้)
+function HistoryDialog({ snapshots, loading, onRestore, onClose }: {
+  snapshots: HistorySnapshot[]
+  loading: boolean
+  onRestore: (snap: HistorySnapshot) => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="anim-scale-in bg-[var(--md-surface)] md-elev-3 rounded-3xl p-6 w-full max-w-md max-h-[80vh] flex flex-col transition-colors"
+        onClick={e => e.stopPropagation()}
+      >
+        <h3 className="font-medium text-lg text-[var(--md-on-surface)] mb-1">🕐 ประวัติ/กู้คืน</h3>
+        <p className="text-xs text-[var(--md-on-surface-var)] mb-4">
+          backup อัตโนมัติของเดือนนี้ (สูงสุด 15 ชุดล่าสุด)
+        </p>
+        {loading ? (
+          <p className="text-sm text-[var(--md-on-surface-var)] py-6 text-center">กำลังโหลด…</p>
+        ) : !snapshots.length ? (
+          <p className="text-sm text-[var(--md-on-surface-var)] py-6 text-center">ยังไม่มีประวัติของเดือนนี้ — จะเริ่มเก็บหลังจากมีการแก้ไขครั้งถัดไป</p>
+        ) : (
+          <div className="overflow-y-auto space-y-2 -mx-1 px-1">
+            {snapshots.map((snap, i) => (
+              <div key={snap.createdAt} className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm text-[var(--md-on-surface)]">
+                    {new Date(snap.createdAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </p>
+                  {i === 0 && <p className="text-xs text-[var(--md-on-surface-var)]">ล่าสุดก่อนแก้ไขครั้งนี้</p>}
+                </div>
+                <BtnOutlined onClick={() => onRestore(snap)} className="shrink-0">กู้คืน</BtnOutlined>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex justify-end mt-5">
+          <BtnOutlined onClick={onClose}>ปิด</BtnOutlined>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PinModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (pin: string) => boolean }) {
   const [pin, setPin] = useState('')
   const [err, setErr] = useState(false)

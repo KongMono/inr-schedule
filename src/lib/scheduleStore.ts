@@ -87,3 +87,55 @@ export function resetSchedules(): ScheduleData[] {
   }
   return seedSchedules
 }
+
+// ── Local backup history ────────────────────────────────────────
+// เก็บ snapshot ของแต่ละเดือนไว้ในเครื่องนี้ (localStorage) ก่อนถูกเขียนทับทุกครั้ง
+// ไม่ผูกกับ Supabase — กันเคสเผลอ save ทับข้อมูลจริงโดยไม่ตั้งใจ
+const HISTORY_KEY = 'inr-schedule:history:v1'
+const HISTORY_LIMIT = 15 // เก็บย้อนหลังสูงสุดต่อเดือน กันเปลือง localStorage
+
+export interface HistorySnapshot {
+  createdAt: number
+  data: ScheduleData
+}
+
+type HistoryMap = Record<string, HistorySnapshot[]>
+
+function historyKey(month: number, thaiYear: number): string {
+  return `${month}-${thaiYear}`
+}
+
+function loadHistoryMap(): HistoryMap {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(HISTORY_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? (parsed as HistoryMap) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveHistoryMap(map: HistoryMap): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(map))
+  } catch {
+    // เกิน quota หรือ private mode — ปล่อยผ่าน ไม่ทำให้ save หลักพัง
+  }
+}
+
+// เรียกก่อนเขียนทับข้อมูลเดือนหนึ่ง — เก็บสถานะเดิมไว้กู้คืนทีหลังได้
+export function pushHistory(m: ScheduleData): void {
+  const map = loadHistoryMap()
+  const key = historyKey(m.month, m.thaiYear)
+  const list = map[key] ?? []
+  list.unshift({ createdAt: Date.now(), data: m })
+  map[key] = list.slice(0, HISTORY_LIMIT)
+  saveHistoryMap(map)
+}
+
+export function loadHistory(month: number, thaiYear: number): HistorySnapshot[] {
+  return loadHistoryMap()[historyKey(month, thaiYear)] ?? []
+}
