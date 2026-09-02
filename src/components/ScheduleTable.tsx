@@ -1965,7 +1965,9 @@ function WhatsNewDialog({ items, onClose }: { items: string[]; onClose: () => vo
         <ul className="text-sm text-[var(--md-on-surface-var)] text-left space-y-1.5 mb-5">
           {items.map((it, i) => <li key={i} className="flex gap-2"><span>•</span><span>{it}</span></li>)}
         </ul>
-        <BtnFilled onClick={onClose} className="w-full">รับทราบ</BtnFilled>
+        <div className="flex justify-center">
+          <BtnFilled onClick={onClose}>ปิด</BtnFilled>
+        </div>
       </div>
     </div>
   )
