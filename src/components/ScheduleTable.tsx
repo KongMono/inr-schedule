@@ -17,6 +17,7 @@ const EDIT_KEY = 'inr-schedule:edit'
 const THEME_KEY = 'inr-schedule:theme'
 const ME_KEY = 'inr-schedule:me'
 const AXIS_KEY = 'inr-schedule:axis'
+const BUILD_SEEN_KEY = 'inr-schedule:seenBuild'
 
 // ── Shift styling (MD3 color-aware) ─────────────────────────────
 const SHIFT_STYLE: Record<ShiftCode, string> = {
@@ -935,6 +936,7 @@ export default function ScheduleTable() {
   const [editing,   setEditing]   = useState(false)
   const [showPin,   setShowPin]   = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false)
   const [historySnapshots, setHistorySnapshots] = useState<HistorySnapshot[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [dark,      setDark]      = useState(false)
@@ -1067,6 +1069,23 @@ export default function ScheduleTable() {
     })
     return unsub
   }, [hydrated])
+
+  // แจ้งเตือน build ใหม่ — เทียบ build id ปัจจุบันกับที่เคยเห็นล่าสุด (localStorage)
+  // ครั้งแรกสุดที่เปิดแอป (ยังไม่มีค่าเก่า) แค่บันทึกไว้เฉยๆ ไม่โชว์ dialog
+  useEffect(() => {
+    if (!hydrated) return
+    const buildId = process.env.NEXT_PUBLIC_BUILD_ID
+    if (!buildId) return
+    const seen = window.localStorage.getItem(BUILD_SEEN_KEY)
+    if (seen && seen !== buildId) setShowUpdateDialog(true)
+    else if (!seen) window.localStorage.setItem(BUILD_SEEN_KEY, buildId)
+  }, [hydrated])
+
+  function dismissUpdateDialog() {
+    const buildId = process.env.NEXT_PUBLIC_BUILD_ID
+    if (buildId) window.localStorage.setItem(BUILD_SEEN_KEY, buildId)
+    setShowUpdateDialog(false)
+  }
 
   if (!hydrated) {
     return (
@@ -1833,6 +1852,8 @@ export default function ScheduleTable() {
 
       {showPin && <PinModal onCancel={() => setShowPin(false)} onSubmit={unlock} />}
 
+      {showUpdateDialog && <UpdateDialog onClose={dismissUpdateDialog} />}
+
       {/* Holiday tooltip bubble — fixed position, escapes overflow */}
       {holTip && (
         <div
@@ -1921,6 +1942,26 @@ function PinModal({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (pin
         <div className="flex justify-end gap-2 mt-5">
           <BtnOutlined onClick={onCancel}>ยกเลิก</BtnOutlined>
           <BtnFilled onClick={submit}>ปลดล็อก</BtnFilled>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// แจ้งเตือน build ใหม่ — โชว์ครั้งเดียวต่อเวอร์ชัน (ปิด/รีเฟรชแล้วไม่เด้งซ้ำจนกว่าจะมี build ถัดไป)
+function UpdateDialog({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="anim-scale-in bg-[var(--md-surface)] md-elev-3 rounded-3xl p-6 w-full max-w-xs text-center transition-colors"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="text-3xl mb-2">🔄</div>
+        <h3 className="font-medium text-lg text-[var(--md-on-surface)] mb-1">มีอัปเดตใหม่</h3>
+        <p className="text-sm text-[var(--md-on-surface-var)] mb-5">แอปมีเวอร์ชันใหม่ กดรีเฟรชเพื่อใช้งานฟีเจอร์ล่าสุด</p>
+        <div className="flex justify-center gap-2">
+          <BtnOutlined onClick={onClose}>ไว้ทีหลัง</BtnOutlined>
+          <BtnFilled onClick={() => { onClose(); window.location.reload() }}>รีเฟรชเลย</BtnFilled>
         </div>
       </div>
     </div>
