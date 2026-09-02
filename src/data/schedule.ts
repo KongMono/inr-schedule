@@ -6,6 +6,7 @@ export type ShiftCode =
   | 'OFF' // เวรบ่ายดึก บ/ด
   | 'CBD' // เวรเช้าบ่ายดึก ช/บ/ด (เต็มวัน)
   | 'SWAP'// สลับ
+  | 'SICK'// ลาป่วย
   | '-'   // ว่าง/ไม่ได้ทำงาน
 
 export interface StaffMember {
@@ -176,6 +177,7 @@ export const SHIFT_LABELS: Record<ShiftCode, string> = {
   OFF: 'เวรบ่ายดึก',
   CBD: 'เวรเช้าบ่ายดึก',
   SWAP: 'สลับ',
+  SICK: 'ลาป่วย',
   '-': '',
 }
 

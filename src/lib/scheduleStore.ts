@@ -8,7 +8,7 @@ import {
 const STORAGE_KEY = 'inr-schedule:v1'
 
 // ลำดับการ cycle เมื่อคลิก cell ใน edit mode
-export const SHIFT_CYCLE: ShiftCode[] = ['-', 'M', 'A', 'N', 'N2', 'OFF', 'CBD', 'SWAP']
+export const SHIFT_CYCLE: ShiftCode[] = ['-', 'M', 'A', 'N', 'N2', 'OFF', 'CBD', 'SWAP', 'SICK']
 
 export function nextShift(current: ShiftCode): ShiftCode {
   const i = SHIFT_CYCLE.indexOf(current)

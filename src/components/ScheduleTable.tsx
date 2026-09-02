@@ -27,11 +27,12 @@ const SHIFT_STYLE: Record<ShiftCode, string> = {
   OFF:  'inline-block px-1 rounded bg-orange-100 dark:bg-orange-900/60 text-orange-700 dark:text-orange-300 font-bold text-[10px] leading-4',
   CBD:  'inline-block px-1 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold text-[10px] leading-4 whitespace-nowrap',
   SWAP: 'text-indigo-500 dark:text-indigo-400 text-xs',
+  SICK: 'inline-block px-1 rounded bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300 font-bold text-[10px] leading-4',
   '-':  'text-gray-300 dark:text-gray-600',
 }
 
 const SHIFT_DISPLAY: Record<ShiftCode, string> = {
-  M: '/', A: '✕', N: 'S', N2: 'S', OFF: 'บ/ด', CBD: 'ช/บ/ด', SWAP: 'สลับ', '-': '',
+  M: '/', A: '✕', N: 'S', N2: 'S', OFF: 'บ/ด', CBD: 'ช/บ/ด', SWAP: 'สลับ', SICK: 'ลาป่วย', '-': '',
 }
 
 const DAY_ABBR = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
@@ -204,18 +205,19 @@ const isWorking = (s: ShiftCode) => WORKING.includes(s)
 
 // นับเวรของคนหนึ่งในเดือน — สำหรับสรุป "เวรของฉัน"
 function shiftCounts(m: StaffMember) {
-  let M = 0, S = 0, OFF = 0, CBD = 0, SWAP = 0
+  let M = 0, S = 0, OFF = 0, CBD = 0, SWAP = 0, SICK = 0
   for (const s of m.shifts) {
     if (s === 'M') M++
     else if (s === 'N' || s === 'N2') S++
     else if (s === 'OFF') OFF++
     else if (s === 'CBD') CBD++
     else if (s === 'SWAP') SWAP++
+    else if (s === 'SICK') SICK++
   }
-  return { M, S, OFF, CBD, SWAP }
+  return { M, S, OFF, CBD, SWAP, SICK }
 }
-const COUNT_LABELS: { key: 'M' | 'S' | 'OFF' | 'CBD' | 'SWAP'; label: string }[] = [
-  { key: 'M', label: 'แพทย์เวร' }, { key: 'OFF', label: 'บ/ด' }, { key: 'CBD', label: 'ช/บ/ด' }, { key: 'S', label: 'standby' }, { key: 'SWAP', label: 'สลับ' },
+const COUNT_LABELS: { key: 'M' | 'S' | 'OFF' | 'CBD' | 'SWAP' | 'SICK'; label: string }[] = [
+  { key: 'M', label: 'แพทย์เวร' }, { key: 'OFF', label: 'บ/ด' }, { key: 'CBD', label: 'ช/บ/ด' }, { key: 'S', label: 'standby' }, { key: 'SWAP', label: 'สลับ' }, { key: 'SICK', label: 'ลาป่วย' },
 ]
 
 // เงินเวร บ/ด = จำนวน บ/ด (OFF) × อัตราตามตำแหน่ง
@@ -253,8 +255,8 @@ function autoFillEmpty(data: ScheduleData): ScheduleData {
 
   const filled = new Map<StaffMember, ShiftCode[]>()
   for (const group of groups.values()) {
-    // SWAP คือการตกลงสลับเวรกันเอง ไม่ใช่เวรปกติที่ควรให้ระบบยัดเติมเอง
-    const usedCodes = Array.from(new Set(group.flatMap(m => m.shifts).filter(s => s !== '-' && s !== 'SWAP')))
+    // SWAP คือการตกลงสลับเวรกันเอง, SICK คือลาป่วยจริงของคนนั้น — ไม่ใช่เวรปกติที่ควรให้ระบบยัดเติมเอง
+    const usedCodes = Array.from(new Set(group.flatMap(m => m.shifts).filter(s => s !== '-' && s !== 'SWAP' && s !== 'SICK')))
     const next = new Map<StaffMember, ShiftCode[]>(group.map(m => [m, [...m.shifts]]))
     if (usedCodes.length) {
       const counts = new Map<StaffMember, Map<ShiftCode, number>>()
