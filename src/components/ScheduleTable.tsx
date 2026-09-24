@@ -224,8 +224,9 @@ const COUNT_LABELS: { key: 'M' | 'S' | 'OFF' | 'CBD' | 'SWAP' | 'SICK'; label: s
 ]
 
 // เงินเวร บ/ด = จำนวน บ/ด (OFF) × อัตราตามตำแหน่ง
+// บ/ด = บ่าย+ดึก (2 เวร) → ฿2,400 ซึ่งเข้าชุดกับ ช/บ/ด (3 เวร) ที่ ฿3,600
 // นักเทคโน/แพทย์ไม่คิด บ/ด (นักเทคโนรับเป็น standby OT ชม.ละ 400 แทน)
-const PAY_RATE: Record<string, number> = { nurse: 1200, tech: 0, doctor: 0 }
+const PAY_RATE: Record<string, number> = { nurse: 2400, tech: 0, doctor: 0 }
 // เวรเช้าบ่ายดึก (ช/บ/ด, เต็มวัน) = 3600 บาท/วัน เท่ากันทุกตำแหน่ง (แพทย์ไม่คิด)
 const CBD_PAY = 3600
 // อัตรา OT ต่อชั่วโมง เมื่อ standby ถูกเรียกมาทำงาน — ต่างตามตำแหน่ง (แพทย์ไม่คิด)
@@ -920,7 +921,7 @@ function MonthSummary({ data }: { data: ScheduleData }) {
         </table>
       </div>
       <p className="md-label-s text-[var(--md-on-surface-var)] mt-3">
-        เงินเวร = (บ/ด × อัตราตำแหน่ง) + (ช/บ/ด × ฿3,600) + (OT ชม × อัตราตำแหน่ง) — พยาบาล บ/ด ฿1,200/เวร · เวรเช้าบ่ายดึก ฿3,600/วัน · standby OT พยาบาล ฿{OT_RATE.nurse}/ชม · นักเทคโน ฿{OT_RATE.tech}/ชม · แพทย์ไม่คิด
+        เงินเวร = (บ/ด × อัตราตำแหน่ง) + (ช/บ/ด × ฿{fmt(CBD_PAY)}) + (OT ชม × อัตราตำแหน่ง) — พยาบาล บ/ด ฿{fmt(PAY_RATE.nurse)}/เวร · เวรเช้าบ่ายดึก ฿{fmt(CBD_PAY)}/วัน · standby OT พยาบาล ฿{OT_RATE.nurse}/ชม · นักเทคโน ฿{OT_RATE.tech}/ชม · แพทย์ไม่คิด
       </p>
       </details>
     </div>
@@ -1858,7 +1859,7 @@ export default function ScheduleTable() {
         {/* Footer */}
         <div className="anim-fade-up bg-[var(--md-surface)] md-elev-1 mt-4 rounded-2xl px-4 py-4 sm:px-6 sm:py-5 md-body-s text-[var(--md-on-surface-var)] space-y-1.5 transition-colors duration-300">
           <p>หมายเหตุ: S = standby</p>
-          <p>เงินเวรพยาบาล บ/ด 1,200/เวร · standby ชม.ละ 200 บาท</p>
+          <p>เงินเวรพยาบาล บ/ด {PAY_RATE.nurse.toLocaleString('th-TH')}/เวร · standby ชม.ละ {OT_RATE.nurse} บาท</p>
           <p>เงินเวรนักเทคโนโลยีหัวใจและทรวงอก standby ชม.ละ 400 บาท</p>
           <p>เวรเช้าบ่ายดึก (ช/บ/ด) 3,600 บาท/วัน</p>
         </div>
