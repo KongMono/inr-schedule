@@ -1397,15 +1397,25 @@ export default function ScheduleTable() {
         {/* ── MD3 Top App Bar ── */}
         <div className="relative bg-[var(--md-surface)] md-elev-1 rounded-t-2xl px-4 py-6 sm:px-6 sm:py-7 transition-colors duration-300">
 
-          {/* Contact page link — absolute, left */}
-          <div data-export-hide className="absolute top-4 left-4 z-10">
+          {/* Contact page + บัญชีหน่วย links — absolute, left
+              ข้อความในปุ่มซ่อนบนจอเล็ก เหลือแต่ไอคอน กันไปชนบล็อกหัวเรื่องตรงกลาง */}
+          <div data-export-hide className="absolute top-4 left-4 z-10 flex items-center gap-1.5">
             <Link
               href="/contact"
               title="ข้อมูลติดต่อ"
-              className="md-label-l inline-flex items-center gap-1 h-10 px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
+              className="md-label-l inline-flex items-center justify-center gap-1 h-10 w-10 sm:w-auto px-0 sm:px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
             >
-              📞 ติดต่อ
+              📞 <span className="hidden sm:inline">ติดต่อ</span>
             </Link>
+            <a
+              href="https://inr-account.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="บัญชีหน่วย — รายรับรายจ่ายและค่าบำรุง (เปิดแท็บใหม่)"
+              className="md-label-l inline-flex items-center justify-center gap-1 h-10 w-10 sm:w-auto px-0 sm:px-4 rounded-full bg-teal-600/10 dark:bg-teal-400/15 text-teal-700 dark:text-teal-300 transition-all duration-150 active:opacity-70 active:scale-[0.97]"
+            >
+              💰 <span className="hidden sm:inline">บัญชี</span>
+            </a>
           </div>
 
           {/* Online count + dark mode toggle — absolute, right */}
