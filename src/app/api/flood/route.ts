@@ -1,5 +1,8 @@
 // ห้าม Next.js cache ผลลัพธ์ของ route นี้เอง — ต้องยิงไปหา กทม. ใหม่ทุกครั้งที่เรียก
 export const dynamic = 'force-dynamic'
+// รันใกล้ปลายทางที่สุด — เดิม default region ของ Vercel (สหรัฐฯ) latency ไป กทม. สูงจน
+// timeout ต่อ request ไม่พอ (local test ไทยเจอ ~60% success แต่ Vercel fail ทุกครั้ง)
+export const preferredRegion = 'sin1'
 
 // ดึงข้อมูลน้ำท่วม/ระดับน้ำจากสำนักการระบายน้ำ กทม. (public API, ไม่ต้อง auth)
 // หมายเหตุ: server ฝั่ง กทม. สลับ backend แบบสุ่ม — ~ครึ่งหนึ่งของ request คืน HTML
