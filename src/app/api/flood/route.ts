@@ -26,16 +26,19 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 // ซ้ำกันแล้ว dedupe เหลือ fetch จริงแค่ครั้งเดียว ทำให้ retry ทั้งหมดได้ผลลัพธ์เดิมซ้ำ
 // timeout ต่อ request (ไม่ใช่แค่ retry นับครั้ง) กันเคส server ฝั่ง กทม. ค้างเฉยๆ ไม่ error —
 // ถ้าไม่ตั้ง จะดึงเวลารวมยาวจนชน timeout ของ serverless function ทั้งฟังก์ชัน
-async function fetchJsonWithRetry(url: string, tries = 4, timeoutMs = 2500): Promise<unknown | null> {
+async function fetchJsonWithRetry(url: string, debugLog: string[], tries = 4, timeoutMs = 2500): Promise<unknown | null> {
   for (let i = 0; i < tries; i++) {
+    const t0 = Date.now()
     try {
       const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_r=${Date.now()}-${i}`
       const res = await fetch(bustUrl, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) })
       const ct = res.headers.get('content-type') ?? ''
-      if (res.ok && ct.includes('json')) return await res.json()
-      console.error('[flood] non-json response', url, res.status, ct)
+      const ms = Date.now() - t0
+      if (res.ok && ct.includes('json')) { debugLog.push(`${url} try${i}: OK json ${ms}ms`); return await res.json() }
+      debugLog.push(`${url} try${i}: status=${res.status} ct=${ct} ${ms}ms`)
     } catch (err) {
-      console.error('[flood] fetch threw', url, err)
+      const ms = Date.now() - t0
+      debugLog.push(`${url} try${i}: threw ${err instanceof Error ? `${err.name}:${err.message}` : String(err)} ${ms}ms`)
     }
   }
   return null
@@ -61,15 +64,18 @@ type FloodEvent = {
 }
 
 export async function GET() {
+  // DEBUG ชั่วคราว — วินิจฉัยว่า Vercel เจออะไรจริง (timeout/blocked/html) ลบทิ้งหลังแก้เสร็จ
+  const debugLog: string[] = []
+
   // ยิงสองแหล่งพร้อมกัน — sequential จะดึงเวลารวมยาวจนชน timeout ของ serverless function
   const [events, stations] = await Promise.all([
-    fetchJsonWithRetry(`${BASE}/flood/currentevent`),
-    fetchJsonWithRetry(`${BASE}/mainwater/lastdata/0`),
+    fetchJsonWithRetry(`${BASE}/flood/currentevent`, debugLog),
+    fetchJsonWithRetry(`${BASE}/mainwater/lastdata/0`, debugLog),
   ])
 
   if (events === null && stations === null) {
     // ทั้งสอง endpoint ตอบไม่ได้เลยหลัง retry ครบ — น่าจะเซิร์ฟเวอร์ กทม. ล่มจริงๆ ตอนนี้
-    return Response.json({ configured: true, spots: [], error: 'bma server unreachable' }, { status: 502 })
+    return Response.json({ configured: true, spots: [], error: 'bma server unreachable', debugLog }, { status: 502 })
   }
 
   type Spot = { location: string; detail: string; distanceKm: number; severity: 'critical' | 'warning' }
