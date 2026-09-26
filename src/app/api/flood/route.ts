@@ -16,10 +16,13 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 }
 
 // retry จนกว่าจะได้ JSON จริง (server ฝั่ง กทม. คืน HTML fallback แบบสุ่มบ่อยมาก)
-async function fetchJsonWithRetry(url: string, tries = 6): Promise<unknown | null> {
+// query param กันชน (_r) จำเป็นมาก — ไม่งั้น Next.js request memoization จะมองว่า URL เดิม
+// ซ้ำกันแล้ว dedupe เหลือ fetch จริงแค่ครั้งเดียว ทำให้ retry ทั้งหมดได้ผลลัพธ์เดิมซ้ำ
+async function fetchJsonWithRetry(url: string, tries = 8): Promise<unknown | null> {
   for (let i = 0; i < tries; i++) {
     try {
-      const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_r=${Date.now()}-${i}`
+      const res = await fetch(bustUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' })
       const ct = res.headers.get('content-type') ?? ''
       if (res.ok && ct.includes('json')) return await res.json()
       console.error('[flood] non-json response', url, res.status, ct)
@@ -58,7 +61,9 @@ export async function GET() {
     return Response.json({ configured: true, spots: [], error: 'bma server unreachable' }, { status: 502 })
   }
 
-  const spots: { label: string; distanceKm?: number }[] = []
+  type Spot = { location: string; detail: string; distanceKm: number; severity: 'critical' | 'warning' }
+  const toSeverity = (status?: string): 'critical' | 'warning' => (status === 'critical' ? 'critical' : 'warning')
+  const spots: Spot[] = []
 
   // จุดน้ำท่วมถนนที่ประกาศไว้จริง — กรองเฉพาะที่อยู่ในรัศมีที่สนใจ, เรียงใกล้สุดก่อน
   if (Array.isArray(events)) {
@@ -68,10 +73,11 @@ export async function GET() {
       .filter(x => x.dist <= RADIUS_KM)
       .sort((a, b) => a.dist - b.dist)
     for (const { e, dist } of near) {
-      const icon = e.status === 'critical' ? '🔴' : e.status === 'warning' ? '🟠' : '🚨'
       spots.push({
-        label: `${icon} ${e.st_name ?? 'จุดน้ำท่วม'} (${e.district ?? ''}) ระดับน้ำ ${e.current_lv ?? '-'} ${e.unit_display ?? ''}`,
+        location: `${e.st_name ?? 'จุดน้ำท่วม'} (${e.district ?? ''})`,
+        detail: `ระดับน้ำ ${e.current_lv ?? '-'} ${e.unit_display ?? ''}`,
         distanceKm: Math.round(dist * 10) / 10,
+        severity: toSeverity(e.status),
       })
     }
   }
@@ -83,8 +89,12 @@ export async function GET() {
       if (s.latitude === undefined || s.longitude === undefined) continue
       const dist = haversineKm(HOSPITAL.lat, HOSPITAL.lng, s.latitude, s.longitude)
       if (dist > RADIUS_KM) continue
-      const label = s.status === 'critical' ? '🔴 วิกฤต' : '🟠 เตือนภัย'
-      spots.push({ label: `${label} ระดับน้ำ ${s.st_name ?? ''} (${s.wl_m ?? '-'} ม.รทก.)`, distanceKm: Math.round(dist * 10) / 10 })
+      spots.push({
+        location: s.st_name ?? 'จุดวัดระดับน้ำ',
+        detail: `ระดับน้ำในคลอง ${s.wl_m ?? '-'} ม.รทก.`,
+        distanceKm: Math.round(dist * 10) / 10,
+        severity: toSeverity(s.status),
+      })
     }
   }
 

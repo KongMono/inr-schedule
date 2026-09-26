@@ -1,14 +1,12 @@
 import { schedules as seedSchedules, type ScheduleData } from '@/data/schedule'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
-import { loadSchedules, saveSchedules, resetSchedules, pushHistory, loadHistory, loadAnnouncement, saveAnnouncement, type HistorySnapshot, type Announcement } from '@/lib/scheduleStore'
+import { loadSchedules, saveSchedules, resetSchedules, pushHistory, loadHistory, type HistorySnapshot } from '@/lib/scheduleStore'
 
-export type { HistorySnapshot, Announcement }
+export type { HistorySnapshot }
 
 const TABLE = 'schedules'
 const HISTORY_TABLE = 'schedule_history'
 const HISTORY_LIMIT = 15 // เก็บย้อนหลังสูงสุดต่อเดือน
-const ANNOUNCEMENT_TABLE = 'announcement'
-const ANNOUNCEMENT_ID = 1 // แถวเดียว — ประกาศทั้งระบบมีอันเดียวพอ
 
 // เทียบข้อมูลแบบไม่สนลำดับ key — jsonb ของ Postgres จะเรียง key ใหม่ตอน round-trip
 // (เช่น { month, thaiYear, staff } → { month, staff, thaiYear }) ทำให้ JSON.stringify ตรงๆ เทียบพลาด
@@ -168,47 +166,6 @@ export async function resetAll(): Promise<ScheduleData[]> {
   await supabase.from(TABLE).delete().neq('month', -1) // ลบทุกแถว
   await Promise.all(seedSchedules.map(saveMonth))
   return [...seedSchedules].sort(sortByDate)
-}
-
-// ── Announcement (ประกาศบนสุดของหน้า เช่นแจ้งเตือนน้ำท่วม) ───────────
-export async function getAnnouncement(): Promise<Announcement | null> {
-  if (!supabase) return loadAnnouncement()
-  const { data, error } = await supabase
-    .from(ANNOUNCEMENT_TABLE)
-    .select('message, active, updated_at')
-    .eq('id', ANNOUNCEMENT_ID)
-    .maybeSingle()
-  if (error) { console.error('[schedule] announcement fetch error:', error.message); return null }
-  if (!data) return null
-  return { message: data.message, active: data.active, updatedAt: new Date(data.updated_at as string).getTime() }
-}
-
-export async function setAnnouncement(message: string, active: boolean): Promise<void> {
-  const a: Announcement = { message, active, updatedAt: Date.now() }
-  if (!supabase) { saveAnnouncement(a); return }
-  const { error } = await supabase
-    .from(ANNOUNCEMENT_TABLE)
-    .upsert({ id: ANNOUNCEMENT_ID, message, active }, { onConflict: 'id' })
-  if (error) console.error('[schedule] announcement save error:', error.message)
-}
-
-// subscribe การเปลี่ยนแปลงประกาศแบบ realtime — ไม่มี Supabase คืน no-op
-export function subscribeAnnouncement(onChange: (a: Announcement) => void): () => void {
-  if (!supabase) return () => {}
-  const channel = supabase
-    .channel('announcement-realtime')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: ANNOUNCEMENT_TABLE },
-      (payload) => {
-        const row = payload.new as { message: string; active: boolean; updated_at: string }
-        if (row?.message !== undefined) {
-          onChange({ message: row.message, active: row.active, updatedAt: new Date(row.updated_at).getTime() })
-        }
-      },
-    )
-    .subscribe()
-  return () => { supabase?.removeChannel(channel) }
 }
 
 // fallback localStorage: รวม month เดียวเข้า list เดิม

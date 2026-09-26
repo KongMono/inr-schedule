@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   SHIFT_LABELS,
@@ -11,7 +11,7 @@ import {
 } from '@/data/schedule'
 import { CHANGELOG } from '@/data/changelog'
 import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
-import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount, getHistory, restoreSnapshot, backupNow, getAnnouncement, setAnnouncement, subscribeAnnouncement, type HistorySnapshot, type Announcement } from '@/lib/scheduleRepo'
+import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount, getHistory, restoreSnapshot, backupNow, type HistorySnapshot } from '@/lib/scheduleRepo'
 
 const EDIT_PIN = '11223344'
 const EDIT_KEY = 'inr-schedule:edit'
@@ -19,8 +19,7 @@ const THEME_KEY = 'inr-schedule:theme'
 const ME_KEY = 'inr-schedule:me'
 const AXIS_KEY = 'inr-schedule:axis'
 const CHANGELOG_SEEN_KEY = 'inr-schedule:seenChangelog'
-const ANNOUNCEMENT_DISMISS_KEY = 'inr-schedule:dismissedAnnouncement'
-interface FloodSpot { label: string; distanceKm?: number }
+interface FloodSpot { location: string; detail: string; distanceKm: number; severity: 'critical' | 'warning' }
 const WHATS_NEW_MAX = 3 // โชว์ล่าสุดกี่ entry กันไม่ให้ dialog ยาวเกิน
 
 // ── Shift styling (MD3 color-aware) ─────────────────────────────
@@ -942,11 +941,10 @@ export default function ScheduleTable() {
   const [showPin,   setShowPin]   = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [whatsNewItems, setWhatsNewItems] = useState<string[] | null>(null)
-  const [announcement, setAnnouncementState] = useState<Announcement | null>(null)
-  const [announceDismissed, setAnnounceDismissed] = useState<string | null>(null)
-  const [showAnnounceEditor, setShowAnnounceEditor] = useState(false)
   const [floodSpots, setFloodSpots] = useState<FloodSpot[]>([])
   const [floodDismissed, setFloodDismissed] = useState(false)
+  const [floodLoading, setFloodLoading] = useState(false)
+  const [floodUpdatedAt, setFloodUpdatedAt] = useState<number | null>(null)
   const [historySnapshots, setHistorySnapshots] = useState<HistorySnapshot[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [dark,      setDark]      = useState(false)
@@ -1099,33 +1097,27 @@ export default function ScheduleTable() {
     setWhatsNewItems(null)
   }
 
-  // ประกาศบนสุดของหน้า (เช่นแจ้งเตือนน้ำท่วม) — โหลดครั้งแรก + subscribe realtime
+  // แจ้งเตือนน้ำท่วมอัตโนมัติ (สนน. กทม.) — โหลดครั้งแรกตอนเปิดหน้า, กดรีเฟรชเรียกซ้ำได้
+  const loadFlood = useCallback(async () => {
+    setFloodLoading(true)
+    try {
+      const res = await fetch('/api/flood')
+      const d = await res.json()
+      if (d?.configured && Array.isArray(d.spots)) {
+        setFloodSpots(d.spots)
+        setFloodUpdatedAt(typeof d.updatedAt === 'number' ? d.updatedAt : Date.now())
+      }
+    } catch {
+      // เงียบ — คงข้อมูลเก่าไว้ ดีกว่าล้างทิ้งเฉยๆ
+    } finally {
+      setFloodLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!hydrated) return
-    setAnnounceDismissed(window.localStorage.getItem(ANNOUNCEMENT_DISMISS_KEY))
-    getAnnouncement().then(a => a && setAnnouncementState(a))
-    return subscribeAnnouncement(setAnnouncementState)
-  }, [hydrated])
-
-  function dismissAnnouncement() {
-    if (!announcement) return
-    window.localStorage.setItem(ANNOUNCEMENT_DISMISS_KEY, announcement.message)
-    setAnnounceDismissed(announcement.message)
-  }
-
-  async function saveAnnouncementEdit(message: string, active: boolean) {
-    await setAnnouncement(message, active)
-    setAnnouncementState({ message, active, updatedAt: Date.now() })
-    setShowAnnounceEditor(false)
-  }
-
-  // แจ้งเตือนน้ำท่วมอัตโนมัติ (สนน. กทม.) — เช็คทุกครั้งที่เปิดหน้า, เงียบถ้า config ไม่ครบ/error
-  useEffect(() => {
-    if (!hydrated) return
-    fetch('/api/flood').then(r => r.json()).then(d => {
-      if (d?.configured && Array.isArray(d.spots)) setFloodSpots(d.spots)
-    }).catch(() => {})
-  }, [hydrated])
+    loadFlood()
+  }, [hydrated, loadFlood])
 
   if (!hydrated) {
     return (
@@ -1427,38 +1419,72 @@ export default function ScheduleTable() {
 
   return (
     <div className="min-h-screen bg-[var(--md-background)] transition-colors duration-300 p-2 sm:p-4">
-      {announcement?.active && announcement.message && announceDismissed !== announcement.message && (
-        <div data-export-hide className={`${view === 'month' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto mb-2 flex items-start gap-2 rounded-xl px-4 py-3 bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 anim-fade-up`}>
-          <span className="shrink-0">⚠️</span>
-          <p className="md-body-s flex-1 whitespace-pre-line">{announcement.message}</p>
-          <button
-            onClick={dismissAnnouncement}
-            aria-label="ปิดประกาศ"
-            className="shrink-0 opacity-70 hover:opacity-100 transition-opacity"
-          >✕</button>
-        </div>
-      )}
       {floodSpots.length > 0 && !floodDismissed && (
-        <div data-export-hide className={`${view === 'month' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto mb-2 rounded-xl px-4 py-3 bg-sky-100 dark:bg-sky-900/60 text-sky-900 dark:text-sky-200 anim-fade-up`}>
-          <div className="flex items-start gap-2">
-            <span className="shrink-0">🌊</span>
-            <p className="md-body-s flex-1 font-medium">
-              พบน้ำท่วม {floodSpots.length} จุด ใกล้โรงพยาบาลกลาง (ข้อมูล สนน. กทม.)
-            </p>
+        <div
+          data-export-hide
+          className={`${view === 'month' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto mb-2 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 anim-fade-up overflow-hidden`}
+        >
+          <div className="flex items-start gap-3 px-4 pt-3.5 pb-2.5">
+            <span className="shrink-0 text-lg leading-none mt-0.5" aria-hidden>🌊</span>
+            <div className="flex-1 min-w-0">
+              <p className="md-title-s font-semibold text-red-700 dark:text-red-300">
+                พบน้ำท่วม {floodSpots.length} จุด
+              </p>
+              <p className="md-label-s text-red-700/70 dark:text-red-300/70 mt-0.5">
+                ใกล้โรงพยาบาลกลาง · ข้อมูลสำนักการระบายน้ำ กรุงเทพมหานคร
+              </p>
+            </div>
             <button
               onClick={() => setFloodDismissed(true)}
               aria-label="ปิดแจ้งเตือนน้ำท่วม"
-              className="shrink-0 opacity-70 hover:opacity-100 transition-opacity"
-            >✕</button>
+              className="shrink-0 -m-1.5 p-1.5 rounded-full text-red-700/60 dark:text-red-300/60 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 active:scale-90 transition-all"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden><path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+            </button>
           </div>
-          <ul className="md-body-s mt-1.5 ml-6 space-y-0.5">
-            {floodSpots.slice(0, 5).map((s, i) => (
-              <li key={i}>
-                • {s.label}{s.distanceKm !== undefined ? ` — ห่าง ~${s.distanceKm} กม.` : ''}
+
+          <ul className="px-4 pb-1 divide-y divide-red-200/50 dark:divide-red-900/40 max-h-64 overflow-y-auto">
+            {floodSpots.map((s, i) => (
+              <li key={i} className="flex items-start gap-2.5 py-2">
+                <span
+                  className={`shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${s.severity === 'critical' ? 'bg-red-600 dark:bg-red-400' : 'bg-orange-500 dark:bg-orange-400'}`}
+                  aria-hidden
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="md-body-s text-[var(--md-on-surface)] truncate">{s.location}</p>
+                  <p className="md-label-s text-[var(--md-on-surface-var)]">{s.detail}</p>
+                </div>
+                <span className="shrink-0 md-label-s text-[var(--md-on-surface-var)] tabular-nums pt-px">~{s.distanceKm} กม.</span>
               </li>
             ))}
           </ul>
-          <a href="https://flood.bangkok.go.th/" target="_blank" rel="noopener noreferrer" className="md-body-s underline ml-6 inline-block mt-1">ดูแผนที่เต็ม</a>
+
+          <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
+            <div className="flex items-center gap-1.5 min-w-0 text-red-700/70 dark:text-red-300/70">
+              <button
+                onClick={loadFlood}
+                disabled={floodLoading}
+                aria-label="รีเฟรชข้อมูลน้ำท่วม"
+                className="shrink-0 -m-1 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 active:scale-90 transition-all disabled:active:scale-100"
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden className={floodLoading ? 'anim-spin' : ''}>
+                  <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.89M13.5 1.5v3.5h-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <span className="md-label-s truncate">
+                {floodUpdatedAt ? `อัปเดต ${new Date(floodUpdatedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}` : ''}
+              </span>
+            </div>
+            <a
+              href="https://flood.bangkok.go.th/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 md-label-s font-medium text-red-700 dark:text-red-300 hover:underline inline-flex items-center gap-1"
+            >
+              ดูแผนที่เต็ม
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden><path d="M2 8L8 2M8 2H3.5M8 2V6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </a>
+          </div>
         </div>
       )}
       <div className={`${view === 'month' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto transition-all duration-300`}>
@@ -1647,7 +1673,6 @@ export default function ScheduleTable() {
               )}
               <BtnTonal onClick={autoFillEmptyShifts}>🪄 เติมเวรว่างอัตโนมัติ</BtnTonal>
               <BtnTonal onClick={openHistory}>🕐 ประวัติ/กู้คืน</BtnTonal>
-              <BtnTonal onClick={() => setShowAnnounceEditor(true)}>📢 ประกาศ</BtnTonal>
             </div>
           )}
           {showHistory && (
@@ -1939,14 +1964,6 @@ export default function ScheduleTable() {
 
       {whatsNewItems && <WhatsNewDialog items={whatsNewItems} onClose={dismissWhatsNew} />}
 
-      {showAnnounceEditor && (
-        <AnnounceEditorDialog
-          initial={announcement}
-          onSave={saveAnnouncementEdit}
-          onClose={() => setShowAnnounceEditor(false)}
-        />
-      )}
-
       {/* Holiday tooltip bubble — fixed position, escapes overflow */}
       {holTip && (
         <div
@@ -2062,39 +2079,3 @@ function WhatsNewDialog({ items, onClose }: { items: string[]; onClose: () => vo
   )
 }
 
-// แก้ไขประกาศบนสุดของหน้า (เช่นแจ้งเตือนน้ำท่วม) — เฉพาะโหมดแก้ไข
-function AnnounceEditorDialog({ initial, onSave, onClose }: {
-  initial: Announcement | null
-  onSave: (message: string, active: boolean) => void
-  onClose: () => void
-}) {
-  const [message, setMessage] = useState(initial?.message ?? '')
-  const [active, setActive] = useState(initial?.active ?? false)
-
-  return (
-    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="anim-scale-in bg-[var(--md-surface)] md-elev-3 rounded-3xl p-6 w-full max-w-sm transition-colors"
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="font-medium text-lg text-[var(--md-on-surface)] mb-1">📢 ประกาศ</h3>
-        <p className="text-xs text-[var(--md-on-surface-var)] mb-4">ข้อความจะขึ้นเป็น banner บนสุดของหน้า ให้ทุกคนที่เปิดแอปเห็นทันที</p>
-        <textarea
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          rows={3}
-          placeholder="เช่น ถนนสายเอเชียน้ำท่วม เตรียมเผื่อเวลาเดินทางเข้าเวร"
-          className="border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2 w-full text-sm bg-[var(--md-surface-variant)] dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all resize-none"
-        />
-        <label className="flex items-center gap-2 mt-3 text-sm text-[var(--md-on-surface)] cursor-pointer select-none">
-          <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} className="w-4 h-4 accent-teal-600" />
-          เปิดใช้งานประกาศนี้
-        </label>
-        <div className="flex justify-end gap-2 mt-5">
-          <BtnOutlined onClick={onClose}>ยกเลิก</BtnOutlined>
-          <BtnFilled onClick={() => onSave(message.trim(), active)}>บันทึก</BtnFilled>
-        </div>
-      </div>
-    </div>
-  )
-}

@@ -151,31 +151,3 @@ export function pushHistory(m: ScheduleData): void {
 export function loadHistory(month: number, thaiYear: number): HistorySnapshot[] {
   return loadHistoryMap()[historyKey(month, thaiYear)] ?? []
 }
-
-// ── Announcement (ประกาศบนสุดของหน้า เช่นแจ้งเตือนน้ำท่วม) — local fallback ──
-const ANNOUNCEMENT_KEY = 'inr-schedule:announcement:v1'
-
-export interface Announcement {
-  message: string
-  active: boolean
-  updatedAt: number
-}
-
-export function loadAnnouncement(): Announcement | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = window.localStorage.getItem(ANNOUNCEMENT_KEY)
-    return raw ? (JSON.parse(raw) as Announcement) : null
-  } catch {
-    return null
-  }
-}
-
-export function saveAnnouncement(a: Announcement): void {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(ANNOUNCEMENT_KEY, JSON.stringify(a))
-  } catch {
-    // เกิน quota หรือ private mode — ปล่อยผ่าน
-  }
-}

@@ -144,7 +144,13 @@ body {
 }
 .anim-ring-pulse { animation: mdRingPulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
-/* Reduced motion: entrances land instantly, no ping */
+/* Loading spinner (refresh buttons) */
+@keyframes mdSpin { to { transform: rotate(360deg); } }
+@keyframes mdPulseOpacity { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.anim-spin { animation: mdSpin 0.8s linear infinite; }
+
+/* Reduced motion: entrances land instantly, no ping. Loading state keeps
+   communicating "busy" via an opacity pulse instead of a full stop. */
 @media (prefers-reduced-motion: reduce) {
   .anim-fade-up, .anim-slide-right, .anim-slide-left, .anim-scale-in,
   .anim-header-1, .anim-header-2, .anim-header-3, .anim-header-4,
@@ -153,4 +159,5 @@ body {
     animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
   }
+  .anim-spin { animation: mdPulseOpacity 1.2s ease-in-out infinite; }
 }
