@@ -1,3 +1,6 @@
+// ห้าม Next.js cache ผลลัพธ์ของ route นี้เอง — ต้องยิงไปหา กทม. ใหม่ทุกครั้งที่เรียก
+export const dynamic = 'force-dynamic'
+
 // ดึงข้อมูลน้ำท่วม/ระดับน้ำจากสำนักการระบายน้ำ กทม. (public API, ไม่ต้อง auth)
 // หมายเหตุ: server ฝั่ง กทม. สลับ backend แบบสุ่ม — ~ครึ่งหนึ่งของ request คืน HTML
 // fallback แทน JSON จริง (bug ฝั่งเขา ไม่ใช่เรา) จึงต้อง retry จนกว่าจะได้ JSON
@@ -18,11 +21,13 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 // retry จนกว่าจะได้ JSON จริง (server ฝั่ง กทม. คืน HTML fallback แบบสุ่มบ่อยมาก)
 // query param กันชน (_r) จำเป็นมาก — ไม่งั้น Next.js request memoization จะมองว่า URL เดิม
 // ซ้ำกันแล้ว dedupe เหลือ fetch จริงแค่ครั้งเดียว ทำให้ retry ทั้งหมดได้ผลลัพธ์เดิมซ้ำ
-async function fetchJsonWithRetry(url: string, tries = 8): Promise<unknown | null> {
+// timeout ต่อ request (ไม่ใช่แค่ retry นับครั้ง) กันเคส server ฝั่ง กทม. ค้างเฉยๆ ไม่ error —
+// ถ้าไม่ตั้ง จะดึงเวลารวมยาวจนชน timeout ของ serverless function ทั้งฟังก์ชัน
+async function fetchJsonWithRetry(url: string, tries = 4, timeoutMs = 2500): Promise<unknown | null> {
   for (let i = 0; i < tries; i++) {
     try {
       const bustUrl = `${url}${url.includes('?') ? '&' : '?'}_r=${Date.now()}-${i}`
-      const res = await fetch(bustUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      const res = await fetch(bustUrl, { headers: { Accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) })
       const ct = res.headers.get('content-type') ?? ''
       if (res.ok && ct.includes('json')) return await res.json()
       console.error('[flood] non-json response', url, res.status, ct)
@@ -53,8 +58,11 @@ type FloodEvent = {
 }
 
 export async function GET() {
-  const events = await fetchJsonWithRetry(`${BASE}/flood/currentevent`)
-  const stations = await fetchJsonWithRetry(`${BASE}/mainwater/lastdata/0`)
+  // ยิงสองแหล่งพร้อมกัน — sequential จะดึงเวลารวมยาวจนชน timeout ของ serverless function
+  const [events, stations] = await Promise.all([
+    fetchJsonWithRetry(`${BASE}/flood/currentevent`),
+    fetchJsonWithRetry(`${BASE}/mainwater/lastdata/0`),
+  ])
 
   if (events === null && stations === null) {
     // ทั้งสอง endpoint ตอบไม่ได้เลยหลัง retry ครบ — น่าจะเซิร์ฟเวอร์ กทม. ล่มจริงๆ ตอนนี้
