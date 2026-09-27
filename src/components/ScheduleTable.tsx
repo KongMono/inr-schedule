@@ -10,6 +10,7 @@ import {
   type StaffMember,
 } from '@/data/schedule'
 import { CHANGELOG } from '@/data/changelog'
+import { fetchFloodSpots, type FloodSpot } from '@/lib/flood'
 import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
 import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount, getHistory, restoreSnapshot, backupNow, type HistorySnapshot } from '@/lib/scheduleRepo'
 
@@ -19,7 +20,6 @@ const THEME_KEY = 'inr-schedule:theme'
 const ME_KEY = 'inr-schedule:me'
 const AXIS_KEY = 'inr-schedule:axis'
 const CHANGELOG_SEEN_KEY = 'inr-schedule:seenChangelog'
-interface FloodSpot { location: string; detail: string; distanceKm: number; severity: 'critical' | 'warning' }
 const WHATS_NEW_MAX = 3 // โชว์ล่าสุดกี่ entry กันไม่ให้ dialog ยาวเกิน
 
 // ── Shift styling (MD3 color-aware) ─────────────────────────────
@@ -1097,15 +1097,15 @@ export default function ScheduleTable() {
     setWhatsNewItems(null)
   }
 
-  // แจ้งเตือนน้ำท่วมอัตโนมัติ (สนน. กทม.) — โหลดครั้งแรกตอนเปิดหน้า, กดรีเฟรชเรียกซ้ำได้
+  // แจ้งเตือนน้ำท่วมอัตโนมัติ (ThaiWater) — โหลดครั้งแรกตอนเปิดหน้า, กดรีเฟรชเรียกซ้ำได้
+  // ยิงจาก browser ตรงไป กทม. (ดูเหตุผลใน lib/flood.ts) ไม่ผ่าน server route
   const loadFlood = useCallback(async () => {
     setFloodLoading(true)
     try {
-      const res = await fetch('/api/flood')
-      const d = await res.json()
-      if (d?.configured && Array.isArray(d.spots)) {
-        setFloodSpots(d.spots)
-        setFloodUpdatedAt(typeof d.updatedAt === 'number' ? d.updatedAt : Date.now())
+      const spots = await fetchFloodSpots()
+      if (spots) {
+        setFloodSpots(spots)
+        setFloodUpdatedAt(Date.now())
       }
     } catch {
       // เงียบ — คงข้อมูลเก่าไว้ ดีกว่าล้างทิ้งเฉยๆ
@@ -1428,10 +1428,10 @@ export default function ScheduleTable() {
             <span className="shrink-0 text-lg leading-none mt-0.5" aria-hidden>🌊</span>
             <div className="flex-1 min-w-0">
               <p className="md-title-s font-semibold text-red-700 dark:text-red-300">
-                พบน้ำท่วม {floodSpots.length} จุด
+                เฝ้าระวังน้ำ {floodSpots.length} จุด
               </p>
               <p className="md-label-s text-red-700/70 dark:text-red-300/70 mt-0.5">
-                ใกล้โรงพยาบาลกลาง · ข้อมูลสำนักการระบายน้ำ กรุงเทพมหานคร
+                ใกล้โรงพยาบาลกลาง · ข้อมูลคลังข้อมูลน้ำแห่งชาติ (ThaiWater)
               </p>
             </div>
             <button
@@ -1476,7 +1476,7 @@ export default function ScheduleTable() {
               </span>
             </div>
             <a
-              href="https://flood.bangkok.go.th/"
+              href="https://www.thaiwater.net/water/wl"
               target="_blank"
               rel="noopener noreferrer"
               className="shrink-0 md-label-s font-medium text-red-700 dark:text-red-300 hover:underline inline-flex items-center gap-1"
