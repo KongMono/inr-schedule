@@ -26,7 +26,9 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 // ซ้ำกันแล้ว dedupe เหลือ fetch จริงแค่ครั้งเดียว ทำให้ retry ทั้งหมดได้ผลลัพธ์เดิมซ้ำ
 // timeout ต่อ request (ไม่ใช่แค่ retry นับครั้ง) กันเคส server ฝั่ง กทม. ค้างเฉยๆ ไม่ error —
 // ถ้าไม่ตั้ง จะดึงเวลารวมยาวจนชน timeout ของ serverless function ทั้งฟังก์ชัน
-async function fetchJsonWithRetry(url: string, debugLog: string[], tries = 4, timeoutMs = 2500): Promise<unknown | null> {
+// timeout 12s ต่อ request: local (ไทย) ตอบใน ~0.8s แต่จาก Vercel ช้ากว่ามากจน 2.5s ไม่พอ
+// timeout ทุกครั้ง — serverless function limit คือ 300s เหลือเฟือสำหรับ 4 retries
+async function fetchJsonWithRetry(url: string, debugLog: string[], tries = 4, timeoutMs = 12000): Promise<unknown | null> {
   for (let i = 0; i < tries; i++) {
     const t0 = Date.now()
     try {
