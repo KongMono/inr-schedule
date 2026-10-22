@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   SHIFT_LABELS,
@@ -10,7 +10,6 @@ import {
   type StaffMember,
 } from '@/data/schedule'
 import { CHANGELOG } from '@/data/changelog'
-import { fetchFloodSpots, type FloodSpot } from '@/lib/flood'
 import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
 import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount, getHistory, restoreSnapshot, backupNow, type HistorySnapshot } from '@/lib/scheduleRepo'
 
@@ -941,10 +940,6 @@ export default function ScheduleTable() {
   const [showPin,   setShowPin]   = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [whatsNewItems, setWhatsNewItems] = useState<string[] | null>(null)
-  const [floodSpots, setFloodSpots] = useState<FloodSpot[]>([])
-  const [floodDismissed, setFloodDismissed] = useState(false)
-  const [floodLoading, setFloodLoading] = useState(false)
-  const [floodUpdatedAt, setFloodUpdatedAt] = useState<number | null>(null)
   const [historySnapshots, setHistorySnapshots] = useState<HistorySnapshot[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [dark,      setDark]      = useState(false)
@@ -1096,28 +1091,6 @@ export default function ScheduleTable() {
     if (latest) window.localStorage.setItem(CHANGELOG_SEEN_KEY, latest)
     setWhatsNewItems(null)
   }
-
-  // แจ้งเตือนน้ำท่วมอัตโนมัติ (ThaiWater) — โหลดครั้งแรกตอนเปิดหน้า, กดรีเฟรชเรียกซ้ำได้
-  // ยิงจาก browser ตรงไป กทม. (ดูเหตุผลใน lib/flood.ts) ไม่ผ่าน server route
-  const loadFlood = useCallback(async () => {
-    setFloodLoading(true)
-    try {
-      const spots = await fetchFloodSpots()
-      if (spots) {
-        setFloodSpots(spots)
-        setFloodUpdatedAt(Date.now())
-      }
-    } catch {
-      // เงียบ — คงข้อมูลเก่าไว้ ดีกว่าล้างทิ้งเฉยๆ
-    } finally {
-      setFloodLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!hydrated) return
-    loadFlood()
-  }, [hydrated, loadFlood])
 
   if (!hydrated) {
     return (
@@ -1419,74 +1392,6 @@ export default function ScheduleTable() {
 
   return (
     <div className="min-h-screen bg-[var(--md-background)] transition-colors duration-300 p-2 sm:p-4">
-      {floodSpots.length > 0 && !floodDismissed && (
-        <div
-          data-export-hide
-          className={`${view === 'month' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto mb-2 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 anim-fade-up overflow-hidden`}
-        >
-          <div className="flex items-start gap-3 px-4 pt-3.5 pb-2.5">
-            <span className="shrink-0 text-lg leading-none mt-0.5" aria-hidden>🌊</span>
-            <div className="flex-1 min-w-0">
-              <p className="md-title-s font-semibold text-red-700 dark:text-red-300">
-                เฝ้าระวังน้ำ {floodSpots.length} จุด
-              </p>
-              <p className="md-label-s text-red-700/70 dark:text-red-300/70 mt-0.5">
-                ใกล้โรงพยาบาลกลาง · ข้อมูลคลังข้อมูลน้ำแห่งชาติ (ThaiWater)
-              </p>
-            </div>
-            <button
-              onClick={() => setFloodDismissed(true)}
-              aria-label="ปิดแจ้งเตือนน้ำท่วม"
-              className="shrink-0 -m-1.5 p-1.5 rounded-full text-red-700/60 dark:text-red-300/60 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40 active:scale-90 transition-all"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden><path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
-            </button>
-          </div>
-
-          <ul className="px-4 pb-1 divide-y divide-red-200/50 dark:divide-red-900/40 max-h-64 overflow-y-auto">
-            {floodSpots.map((s, i) => (
-              <li key={i} className="flex items-start gap-2.5 py-2">
-                <span
-                  className={`shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${s.severity === 'critical' ? 'bg-red-600 dark:bg-red-400' : 'bg-orange-500 dark:bg-orange-400'}`}
-                  aria-hidden
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="md-body-s text-[var(--md-on-surface)] truncate">{s.location}</p>
-                  <p className="md-label-s text-[var(--md-on-surface-var)]">{s.detail}</p>
-                </div>
-                <span className="shrink-0 md-label-s text-[var(--md-on-surface-var)] tabular-nums pt-px">~{s.distanceKm} กม.</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
-            <div className="flex items-center gap-1.5 min-w-0 text-red-700/70 dark:text-red-300/70">
-              <button
-                onClick={loadFlood}
-                disabled={floodLoading}
-                aria-label="รีเฟรชข้อมูลน้ำท่วม"
-                className="shrink-0 -m-1 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 active:scale-90 transition-all disabled:active:scale-100"
-              >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden className={floodLoading ? 'anim-spin' : ''}>
-                  <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.89M13.5 1.5v3.5h-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              <span className="md-label-s truncate">
-                {floodUpdatedAt ? `อัปเดต ${new Date(floodUpdatedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}` : ''}
-              </span>
-            </div>
-            <a
-              href="https://www.thaiwater.net/water/wl"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 md-label-s font-medium text-red-700 dark:text-red-300 hover:underline inline-flex items-center gap-1"
-            >
-              ดูแผนที่เต็ม
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden><path d="M2 8L8 2M8 2H3.5M8 2V6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </a>
-          </div>
-        </div>
-      )}
       <div className={`${view === 'month' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto transition-all duration-300`}>
        <div ref={captureRef} className="bg-[var(--md-background)]">
 
