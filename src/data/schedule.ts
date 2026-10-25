@@ -149,6 +149,7 @@ const july2569: ScheduleData = {
       // นักเทคโนฯ ไม่ใช้เลขลำดับ (id = null เหมือนวุฒิพงษ์) เลขที่เห็นในตารางเป็นของพยาบาล
       id: null,
       name: 'ทวีพร ชุมพงค์',
+      phone: '094-616-4739',
       role: 'tech',
       shifts: Array(31).fill('-'),
     },

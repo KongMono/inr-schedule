@@ -23,6 +23,7 @@ export const contactGroups: ContactGroup[] = [
       { name: 'น.ส.นรารัตน์ สว่างใหญ่', phone: '095-660-5256', role: 'nurse' },
       { name: 'น.ส.ธนัชชา คงนวล', phone: '095-707-8903', role: 'nurse' },
       { name: 'นายวุฒิพงษ์ น้อยบางยาง', phone: '081-167-4347', role: 'tech' },
+      { name: 'น.ส.ทวีพร ชุมพงค์', phone: '094-616-4739', role: 'tech' },
       { name: 'น.ส.โสภิต ยี่อิน', phone: '093-332-8338', role: 'maid' },
       { name: 'น.ส.ณีรนุช เลิศบันลือศักดิ์', phone: '088-099-9318', role: 'maid' },
     ],
