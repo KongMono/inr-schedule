@@ -2,7 +2,9 @@ export type ShiftCode =
   | 'M'   // แพทย์เวร /
   | 'A'   // ไม่อยู่เวร X
   | 'N'   // standby S
-  | 'N2'  // standby S (with number variant)
+  | 'N2'  // standby S (รหัสเก่า แสดงเป็น S เหมือน N — เก็บไว้ให้ข้อมูลเดิมอ่านได้ ไม่อยู่ใน cycle แล้ว)
+  | 'S1'  // อยู่เวรถึง 20:00 แล้ว standby ต่อทั้งคืน
+  | 'S2'  // standby อยู่บ้าน มีเคสค่อยเข้ามา
   | 'OFF' // เวรบ่ายดึก บ/ด
   | 'CBD' // เวรเช้าบ่ายดึก ช/บ/ด (เต็มวัน)
   | 'SWAP'// สลับ
@@ -182,6 +184,8 @@ export const SHIFT_LABELS: Record<ShiftCode, string> = {
   A: 'ไม่อยู่เวร',
   N: 'standby',
   N2: 'standby',
+  S1: 'อยู่เวรถึง 20:00 + standby ทั้งคืน',
+  S2: 'standby อยู่บ้าน (มีเคสค่อยเข้ามา)',
   OFF: 'เวรบ่ายดึก',
   CBD: 'เวรเช้าบ่ายดึก',
   SWAP: 'สลับ',

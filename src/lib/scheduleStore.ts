@@ -8,7 +8,9 @@ import {
 const STORAGE_KEY = 'inr-schedule:v1'
 
 // ลำดับการ cycle เมื่อคลิก cell ใน edit mode
-export const SHIFT_CYCLE: ShiftCode[] = ['-', 'M', 'A', 'N', 'N2', 'OFF', 'CBD', 'SWAP', 'SICK']
+// 'N2' ถอดออกจาก cycle แล้ว (แสดงผลเหมือน 'N' ทุกอย่าง กดวนเจอซ้ำโดยไม่มีความหมาย)
+// แต่ยังรองรับในชนิดข้อมูล เพื่อให้เดือนเก่าที่บันทึก N2 ไว้ยังอ่านได้เหมือนเดิม
+export const SHIFT_CYCLE: ShiftCode[] = ['-', 'M', 'A', 'N', 'S1', 'S2', 'OFF', 'CBD', 'SWAP', 'SICK']
 
 export function nextShift(current: ShiftCode): ShiftCode {
   const i = SHIFT_CYCLE.indexOf(current)

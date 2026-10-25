@@ -10,7 +10,7 @@ import {
   type StaffMember,
 } from '@/data/schedule'
 import { CHANGELOG } from '@/data/changelog'
-import { createEmptyMonth, emptyStaff, nextShift } from '@/lib/scheduleStore'
+import { createEmptyMonth, emptyStaff, nextShift, SHIFT_CYCLE } from '@/lib/scheduleStore'
 import { fetchSchedules, saveMonth, removeMonth, resetAll, subscribeSchedules, subscribeOnlineCount, getHistory, restoreSnapshot, backupNow, type HistorySnapshot } from '@/lib/scheduleRepo'
 
 const EDIT_PIN = '11223344'
@@ -27,6 +27,9 @@ const SHIFT_STYLE: Record<ShiftCode, string> = {
   A:    'text-gray-300 dark:text-gray-600 text-sm leading-none',
   N:    'text-purple-600 dark:text-purple-400 font-semibold',
   N2:   'text-purple-600 dark:text-purple-400 font-semibold',
+  // S1 มีเวรจริงครึ่งค่ำ → ทำเป็นชิปให้เด่นกว่า standby เฉยๆ
+  S1:   'inline-block px-1 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold text-[10px] leading-4',
+  S2:   'text-purple-600 dark:text-purple-400 font-semibold',
   OFF:  'inline-block px-1 rounded bg-orange-100 dark:bg-orange-900/60 text-orange-700 dark:text-orange-300 font-bold text-[10px] leading-4',
   CBD:  'inline-block px-1 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold text-[10px] leading-4 whitespace-nowrap',
   SWAP: 'text-indigo-500 dark:text-indigo-400 text-xs',
@@ -35,7 +38,7 @@ const SHIFT_STYLE: Record<ShiftCode, string> = {
 }
 
 const SHIFT_DISPLAY: Record<ShiftCode, string> = {
-  M: '/', A: '✕', N: 'S', N2: 'S', OFF: 'บ/ด', CBD: 'ช/บ/ด', SWAP: 'สลับ', SICK: 'ลาป่วย', '-': '',
+  M: '/', A: '✕', N: 'S', N2: 'S', S1: 'S1', S2: 'S2', OFF: 'บ/ด', CBD: 'ช/บ/ด', SWAP: 'สลับ', SICK: 'ลาป่วย', '-': '',
 }
 
 const DAY_ABBR = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
@@ -188,6 +191,8 @@ function Legend() {
         { sym: '/',   symCls: 'text-blue-600 dark:text-blue-400 font-medium text-lg', label: 'แพทย์เวร' },
         { sym: '✕',   symCls: 'text-gray-400 dark:text-gray-500 text-sm', label: 'ไม่อยู่เวร' },
         { sym: 'S',   symCls: 'text-purple-600 dark:text-purple-400 font-medium', label: 'standby' },
+        { sym: 'S1',  symCls: 'text-purple-700 dark:text-purple-300 font-bold text-xs', label: 'อยู่เวรถึง 20:00 + standby ทั้งคืน' },
+        { sym: 'S2',  symCls: 'text-purple-600 dark:text-purple-400 font-medium', label: 'standby อยู่บ้าน' },
       ].map(({ sym, symCls, label }) => (
         <span key={label} className="flex items-center gap-1">
           <span className={symCls}>{sym}</span>
@@ -203,7 +208,7 @@ function Legend() {
 
 // ── Shared shift helpers (Today / Week views) ────────────────────
 const THAI_DAY_FULL = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์']
-const WORKING: ShiftCode[] = ['M', 'N', 'N2', 'OFF', 'CBD', 'SWAP']
+const WORKING: ShiftCode[] = ['M', 'N', 'N2', 'S1', 'S2', 'OFF', 'CBD', 'SWAP']
 const isWorking = (s: ShiftCode) => WORKING.includes(s)
 
 // นับเวรของคนหนึ่งในเดือน — สำหรับสรุป "เวรของฉัน"
@@ -211,7 +216,7 @@ function shiftCounts(m: StaffMember) {
   let M = 0, S = 0, OFF = 0, CBD = 0, SWAP = 0, SICK = 0
   for (const s of m.shifts) {
     if (s === 'M') M++
-    else if (s === 'N' || s === 'N2') S++
+    else if (isStandbyCode(s)) S++
     else if (s === 'OFF') OFF++
     else if (s === 'CBD') CBD++
     else if (s === 'SWAP') SWAP++
@@ -232,8 +237,10 @@ const CBD_PAY = 3600
 // อัตรา OT ต่อชั่วโมง เมื่อ standby ถูกเรียกมาทำงาน — ต่างตามตำแหน่ง (แพทย์ไม่คิด)
 const OT_RATE: Record<string, number> = { nurse: 200, tech: 400, doctor: 0 }
 
-// standby ที่ถูกเรียกมาทำงาน (มีชั่วโมง)
-const isStandby = (s: ShiftCode) => s === 'N' || s === 'N2'
+// standby ทุกแบบ (S, S1, S2) — กรอกชั่วโมงที่ถูกเรียกมาทำงานได้เหมือนกัน
+const STANDBY_CODES: ShiftCode[] = ['N', 'N2', 'S1', 'S2']
+const isStandbyCode = (s: ShiftCode) => STANDBY_CODES.includes(s)
+const isStandby = isStandbyCode
 const hoursOf = (m: StaffMember, dayIdx: number) => m.standbyHours?.[dayIdx] ?? 0
 // รวมชั่วโมง standby ทั้งเดือนของคนหนึ่ง
 function standbyHoursTotal(m: StaffMember) {
@@ -241,7 +248,7 @@ function standbyHoursTotal(m: StaffMember) {
 }
 // สัญลักษณ์ในช่อง: standby ที่มีชั่วโมง → "S·N"
 function cellSymbol(shift: ShiftCode, hrs: number) {
-  if (isStandby(shift) && hrs > 0) return `S·${hrs}`
+  if (isStandby(shift) && hrs > 0) return `${SHIFT_DISPLAY[shift]}·${hrs}`
   return SHIFT_DISPLAY[shift]
 }
 
@@ -383,7 +390,9 @@ const DUTY_GROUPS: { label: string; sym: string; match: (s: ShiftCode) => boolea
   { label: 'แพทย์เวร',  sym: '/',    match: s => s === 'M',                dot: 'bg-blue-600',   accent: 'border-blue-200 dark:border-blue-800/70' },
   { label: 'เวรบ่ายดึก', sym: 'บ/ด', match: s => s === 'OFF',              dot: 'bg-orange-700', accent: 'border-orange-200 dark:border-orange-800/70' },
   { label: 'เวรเช้าบ่ายดึก', sym: 'ช/บ/ด', match: s => s === 'CBD',        dot: 'bg-rose-700',   accent: 'border-rose-200 dark:border-rose-800/70' },
+  { label: 'เวรถึง 20:00 + standby', sym: 'S1', match: s => s === 'S1',     dot: 'bg-purple-700', accent: 'border-purple-200 dark:border-purple-800/70' },
   { label: 'Standby',   sym: 'S',    match: s => s === 'N' || s === 'N2',  dot: 'bg-purple-600', accent: 'border-purple-200 dark:border-purple-800/70' },
+  { label: 'Standby อยู่บ้าน', sym: 'S2', match: s => s === 'S2',           dot: 'bg-purple-400', accent: 'border-purple-200 dark:border-purple-800/70' },
   { label: 'สลับเวร',   sym: 'สลับ', match: s => s === 'SWAP',             dot: 'bg-orange-700', accent: 'border-orange-200 dark:border-orange-800/70' },
 ]
 
@@ -756,7 +765,8 @@ const HEATMAP_WEIGHT: Partial<Record<ShiftCode, number>> = { M: 1, OFF: 1, CBD: 
 const HEATMAP_MAX_WEIGHT = 1.5
 
 function heatmapWeight(shift: ShiftCode, hrs: number) {
-  if (isStandby(shift)) return 0.3 + Math.min(hrs, 8) / 8 * 0.7 // มีเวร standby เสมอ 0.3, ถูกเรียกยิ่งนาน ยิ่งเข้ม
+  // standby ตั้งต้น 0.3, ถูกเรียกยิ่งนานยิ่งเข้ม; S1 เริ่มที่ 0.6 เพราะอยู่เวรจริงถึง 20:00
+  if (isStandby(shift)) return (shift === 'S1' ? 0.6 : 0.3) + Math.min(hrs, 8) / 8 * 0.7
   return HEATMAP_WEIGHT[shift] ?? 0
 }
 
@@ -1590,7 +1600,8 @@ export default function ScheduleTable() {
           )}
           {view === 'month' && editing && (
             <p className="md-body-s text-center text-[var(--md-on-surface-var)] mt-3">
-              คลิกช่องวัน (วน: ว่าง → / → ✕ → S → บ/ด → ช/บ/ด → สลับ) · คลิกเลขวันบน header = วันหยุด
+              {/* ลำดับนี้ต้องตรงกับ SHIFT_CYCLE ใน scheduleStore.ts */}
+              คลิกช่องวัน (วน: {SHIFT_CYCLE.map(c => SHIFT_DISPLAY[c] || 'ว่าง').join(' → ')}) · คลิกเลขวันบน header = วันหยุด
             </p>
           )}
 
